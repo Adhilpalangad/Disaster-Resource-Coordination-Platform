@@ -30,7 +30,6 @@
 
   font: 18px/145% var(--sans);
   letter-spacing: 0.18px;
-  color-scheme: light dark;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
@@ -43,53 +42,62 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Brand Colors */
-    --primary: #38bdf8;
-    --primary-hover: #7dd3fc;
-    --secondary: #94a3b8;
-    --secondary-hover: #cbd5e1;
+/* Dark Mode Tokens */
+.dark {
+  --primary: #38bdf8;
+  --primary-hover: #7dd3fc;
+  --secondary: #94a3b8;
+  --secondary-hover: #cbd5e1;
 
-    /* UI Neutrals & Backgrounds */
-    --text: #cbd5e1;
-    --text-h: #f8fafc;
-    --bg: #0f172a;
-    --card-bg: #1e293b;
-    --border: #334155;
-    --code-bg: #1e293b;
-    --accent: #38bdf8;
-    --accent-bg: rgba(56, 189, 248, 0.15);
-    --accent-border: rgba(56, 189, 248, 0.5);
-    --social-bg: rgba(30, 41, 59, 0.5);
-    --shadow: rgba(0, 0, 0, 0.3) 0px 10px 15px -3px, rgba(0, 0, 0, 0.2) 0px 4px 6px -2px;
+  --text: #cbd5e1;
+  --text-h: #f8fafc;
+  --bg: #0f172a;
+  --card-bg: #1e293b;
+  --border: #334155;
+  --code-bg: #1e293b;
+  --accent: #38bdf8;
+  --accent-bg: rgba(56, 189, 248, 0.15);
+  --accent-border: rgba(56, 189, 248, 0.5);
+  --shadow: rgba(0, 0, 0, 0.3) 0px 10px 15px -3px, rgba(0, 0, 0, 0.2) 0px 4px 6px -2px;
 
-    /* Semantic / Disaster-Level Colors */
-    --danger: #f87171;
-    --warning: #fbbf24;
-    --success: #34d399;
-    --info: #60a5fa;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+  --danger: #f87171;
+  --warning: #fbbf24;
+  --success: #34d399;
+  --info: #60a5fa;
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  text-align: left;
 }
 
 body {
   margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  overflow-x: hidden;
+}
+
+.app-sidebar-desktop {
+  display: block;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1023px) {
+  .app-sidebar-desktop {
+    display: none;
+  }
 }
 
 h1,
@@ -134,4 +142,86 @@ code {
   line-height: 135%;
   padding: 4px 8px;
   background: var(--code-bg);
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+button {
+  font-family: var(--sans);
+  cursor: pointer;
+  transition: opacity 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* ── Inputs ───────────────────────────────────────────────────────────────── */
+input, select, textarea {
+  font-family: var(--sans);
+  color: var(--text-h);
+  background-color: var(--card-bg, #ffffff);
+  border: 1px solid var(--border);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+/* ── Links ────────────────────────────────────────────────────────────────── */
+a {
+  transition: color 0.12s ease, opacity 0.12s ease;
+}
+
+/* ── Scrollbar (webkit) ───────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
+
+/* ── Card hover utility ───────────────────────────────────────────────────── */
+.card-hover {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.card-hover:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.09);
+  transform: translateY(-2px);
+}
+
+/* ── Selection ────────────────────────────────────────────────────────────── */
+::selection {
+  background: rgba(2, 132, 199, 0.15);
+  color: var(--text-h);
+}
+
+/* ── Public nav responsive ────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .public-nav-desktop {
+    display: none !important;
+  }
+  .public-nav-mobile-btn {
+    display: flex !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .public-nav-mobile {
+    display: none !important;
+  }
 }
