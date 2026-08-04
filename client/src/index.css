@@ -1,18 +1,31 @@
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* Brand Colors */
+  --primary: #0284c7;        /* Trustworthy Blue */
+  --primary-hover: #0369a1;  
+  --secondary: #475569;      /* Slate Grey */
+  --secondary-hover: #334155;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  /* UI Neutrals & Backgrounds */
+  --text: #334155;
+  --text-h: #0f172a;
+  --bg: #f8fafc;
+  --card-bg: #ffffff;
+  --border: #e2e8f0;
+  --code-bg: #f1f5f9;
+  --accent: #0284c7;
+  --accent-bg: rgba(2, 132, 199, 0.1);
+  --accent-border: rgba(2, 132, 199, 0.5);
+  --social-bg: rgba(241, 245, 249, 0.5);
+  --shadow: rgba(0, 0, 0, 0.05) 0px 4px 6px -1px, rgba(0, 0, 0, 0.03) 0px 2px 4px -1px;
+
+  /* Semantic / Disaster-Level Colors */
+  --danger: #ef4444;         /* High Alert / Red */
+  --warning: #f59e0b;        /* Medium Alert / Amber */
+  --success: #10b981;        /* Normal / Green */
+  --info: #3b82f6;           /* Info / Blue */
+
+  --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --heading: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
   font: 18px/145% var(--sans);
@@ -32,17 +45,30 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+    /* Brand Colors */
+    --primary: #38bdf8;
+    --primary-hover: #7dd3fc;
+    --secondary: #94a3b8;
+    --secondary-hover: #cbd5e1;
+
+    /* UI Neutrals & Backgrounds */
+    --text: #cbd5e1;
+    --text-h: #f8fafc;
+    --bg: #0f172a;
+    --card-bg: #1e293b;
+    --border: #334155;
+    --code-bg: #1e293b;
+    --accent: #38bdf8;
+    --accent-bg: rgba(56, 189, 248, 0.15);
+    --accent-border: rgba(56, 189, 248, 0.5);
+    --social-bg: rgba(30, 41, 59, 0.5);
+    --shadow: rgba(0, 0, 0, 0.3) 0px 10px 15px -3px, rgba(0, 0, 0, 0.2) 0px 4px 6px -2px;
+
+    /* Semantic / Disaster-Level Colors */
+    --danger: #f87171;
+    --warning: #fbbf24;
+    --success: #34d399;
+    --info: #60a5fa;
   }
 
   #social .button-icon {
