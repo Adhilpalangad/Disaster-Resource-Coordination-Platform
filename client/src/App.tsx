@@ -26,13 +26,14 @@ import HelpCenter from "./pages/help/HelpCenter.js";
 import Dashboard from "./pages/dashboard/Dashboard.js";
 import Disasters from "./pages/disasters/Disasters.js";
 import DisasterDetails from "./pages/disasters/DisasterDetails.js";
-import ReliefRequests from "./components/ReliefRequests.js";
+import MyRequests from "./pages/requests/MyRequests.js";
 import CreateReliefRequest from "./pages/requests/CreateReliefRequest.js";
 import RequestDetails from "./pages/requests/RequestDetails.js";
 import ShelterManagement from "./pages/shelter/ShelterManagement.js";
 
 // ── NGO Pages ──────────────────────────────────────────────────────────────────
 import NgoDashboard from "./pages/ngo/NgoDashboard.js";
+import NgoRequests from "./pages/ngo/NgoRequests.js";
 import InventoryManagement from "./pages/inventory/InventoryManagement.js";
 import Assignments from "./pages/assignments/Assignments.js";
 import Reports from "./pages/reports/Reports.js";
@@ -81,7 +82,7 @@ export function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/disasters" element={<Disasters />} />
             <Route path="/disasters/:id" element={<DisasterDetails />} />
-            <Route path="/requests" element={<ReliefRequests />} />
+            <Route path="/requests" element={<MyRequests />} />
             <Route path="/requests/create" element={<CreateReliefRequest />} />
             <Route path="/requests/:id" element={<RequestDetails />} />
             <Route path="/shelters" element={<ShelterManagement />} />
@@ -92,8 +93,7 @@ export function App() {
         <Route element={<ProtectedRoute allowedRoles={["ngo"]} />}>
           <Route element={<AuthenticatedLayout />}>
             <Route path="/ngo/dashboard" element={<NgoDashboard />} />
-            {/* /ngo/requests — verification queue — to be created by NGO dev */}
-            <Route path="/ngo/requests" element={<ReliefRequests />} />
+            <Route path="/ngo/requests" element={<NgoRequests />} />
             <Route path="/inventory" element={<InventoryManagement />} />
             <Route path="/assignments" element={<Assignments />} />
             <Route path="/shelters" element={<ShelterManagement />} />

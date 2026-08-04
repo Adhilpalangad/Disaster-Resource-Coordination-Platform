@@ -87,8 +87,7 @@ export type UrgencyLevel = "low" | "medium" | "high" | "critical";
 
 export interface ReliefRequest {
   _id: string;
-  disasterId: string;
-  disasterTitle?: string;
+  disasterId?: string;
   createdBy: string;
   createdByName?: string;
   category: RequestCategory;
@@ -96,6 +95,8 @@ export interface ReliefRequest {
   urgency: UrgencyLevel;
   location: string;
   contactNumber?: string;
+  latitude?: number;
+  longitude?: number;
   imageUrl?: string;
   status: RequestStatus;
   verificationNote?: string;
