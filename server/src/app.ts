@@ -10,6 +10,7 @@ import locationRouter     from "./features/location/location.routes.js";
 import disasterRouter     from "./features/disasters/disaster.routes.js";
 import ngoRouter          from "./features/ngos/ngo.routes.js";
 import notificationRouter from "./features/notifications/notification.routes.js";
+import inventoryRouter    from "./features/inventory/inventory.routes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -30,6 +31,7 @@ app.use("/api/locations",     locationRouter);
 app.use("/api/disasters",     disasterRouter);
 app.use("/api/ngos",          ngoRouter);
 app.use("/api/notifications", notificationRouter);
+app.use("/api/inventory",    inventoryRouter);
 
 app.get("/", (_req, res) => {
   res.json({ success: true, message: "Disaster Platform API v2 — request routing enabled" });
