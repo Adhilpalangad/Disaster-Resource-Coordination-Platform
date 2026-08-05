@@ -1,96 +1,94 @@
 import api from "./api.js";
-import type { ReliefRequest, RequestStatus, UrgencyLevel, RequestCategory } from "../types/index.js";
+import type { ReliefRequest } from "../types/index.js";
+import type { RequestLocation } from "../types/index.js";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function extract<T>(res: { data: { data: T } }): T {
+  return res.data.data;
+}
+
+// ── Payload types ─────────────────────────────────────────────────────────────
 
 export interface CreateRequestPayload {
-    createdBy: string;
-    createdByName?: string;
-    category: RequestCategory;
-    description: string;
-    urgency: UrgencyLevel;
-    location: string;
-    contactNumber?: string;
-    disasterId?: string;
-    latitude?: number;
-    longitude?: number;
-    image?: File;
+  createdBy:      string;
+  fullName:       string;
+  mobileNumber:   string;
+  peopleAffected: number;
+  ageGroups:      string[];
+  specialNeeds:   string[];
+  disasterId?:    string;
+  disasterName?:  string;
+  category:       string;
+  urgency:        string;
+  description:    string;
+  location:       RequestLocation;
+  image?:         File;
 }
 
-export interface UpdateRequestPayload {
-    status?: RequestStatus;
-    verificationNote?: string;
-    assignedTo?: string;
-    assignedToName?: string;
+export interface GetAllFilters {
+  createdBy?:         string;
+  status?:            string;
+  urgency?:           string;
+  category?:          string;
+  districtId?:        string;
+  assignedNGO?:       string;
+  assignedVolunteer?: string;
 }
 
-export interface RequestFilters {
-    createdBy?: string;
-    status?: RequestStatus;
-    urgency?: UrgencyLevel;
-    category?: RequestCategory;
-}
-
-interface ApiResponse<T> {
-    success: boolean;
-    message?: string;
-    data?: T;
-}
+// ── API ───────────────────────────────────────────────────────────────────────
 
 export const requestsApi = {
-    async getAll(filters: RequestFilters = {}): Promise<ReliefRequest[]> {
-        const params = new URLSearchParams();
-        if (filters.createdBy) params.set("createdBy", filters.createdBy);
-        if (filters.status) params.set("status", filters.status);
-        if (filters.urgency) params.set("urgency", filters.urgency);
-        if (filters.category) params.set("category", filters.category);
 
-        const { data } = await api.get<ApiResponse<ReliefRequest[]>>(
-            `/requests${params.toString() ? `?${params}` : ""}`
-        );
-        return data.data ?? [];
-    },
+  getAll: (filters: GetAllFilters = {}) => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([k, v]) => { if (v) params.set(k, v); });
+    return api
+      .get<{ data: ReliefRequest[] }>(`/requests?${params.toString()}`)
+      .then(extract);
+  },
 
-    async getById(id: string): Promise<ReliefRequest> {
-        const { data } = await api.get<ApiResponse<ReliefRequest>>(`/requests/${id}`);
-        if (!data.data) throw new Error("Request not found");
-        return data.data;
-    },
+  getById: (id: string) =>
+    api.get<{ data: ReliefRequest }>(`/requests/${id}`).then(extract),
 
-    async create(payload: CreateRequestPayload): Promise<ReliefRequest> {
-        const form = new FormData();
-        form.append("createdBy", payload.createdBy);
-        if (payload.createdByName) form.append("createdByName", payload.createdByName);
-        form.append("category", payload.category);
-        form.append("description", payload.description);
-        form.append("urgency", payload.urgency);
-        form.append("location", payload.location);
-        if (payload.contactNumber) form.append("contactNumber", payload.contactNumber);
-        if (payload.disasterId) form.append("disasterId", payload.disasterId);
-        if (payload.latitude != null) form.append("latitude", String(payload.latitude));
-        if (payload.longitude != null) form.append("longitude", String(payload.longitude));
-        if (payload.image) form.append("image", payload.image);
+  create: (payload: CreateRequestPayload) => {
+    const form = new FormData();
+    form.append("createdBy",      payload.createdBy);
+    form.append("fullName",       payload.fullName);
+    form.append("mobileNumber",   payload.mobileNumber);
+    form.append("peopleAffected", String(payload.peopleAffected));
+    form.append("ageGroups",      JSON.stringify(payload.ageGroups));
+    form.append("specialNeeds",   JSON.stringify(payload.specialNeeds));
+    if (payload.disasterId)   form.append("disasterId",   payload.disasterId);
+    if (payload.disasterName) form.append("disasterName", payload.disasterName);
+    form.append("category",    payload.category);
+    form.append("urgency",     payload.urgency);
+    form.append("description", payload.description);
+    form.append("location",    JSON.stringify(payload.location));
+    if (payload.image) form.append("image", payload.image);
 
-        const { data } = await api.post<ApiResponse<ReliefRequest>>("/requests", form, {
-            headers: { "Content-Type": "multipart/form-data" },
-        });
-        if (!data.data) throw new Error(data.message ?? "Failed to create request");
-        return data.data;
-    },
+    return api
+      .post<{ data: ReliefRequest }>("/requests", form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+      .then(extract);
+  },
 
-    async update(id: string, payload: UpdateRequestPayload): Promise<ReliefRequest> {
-        const { data } = await api.put<ApiResponse<ReliefRequest>>(`/requests/${id}`, payload);
-        if (!data.data) throw new Error(data.message ?? "Failed to update request");
-        return data.data;
-    },
+  remove: (id: string) => api.delete(`/requests/${id}`),
 
-    async remove(id: string): Promise<void> {
-        await api.delete(`/requests/${id}`);
-    },
+  // ── NGO actions ─────────────────────────────────────────────────────────────
+  accept:           (id: string)              => api.post<{ data: ReliefRequest }>(`/requests/${id}/accept`).then(extract),
+  verify:           (id: string)              => api.post<{ data: ReliefRequest }>(`/requests/${id}/verify`).then(extract),
+  reject:           (id: string, note: string)=> api.post<{ data: ReliefRequest }>(`/requests/${id}/reject`, { note }).then(extract),
+  reserveResources: (id: string)              => api.post<{ data: ReliefRequest }>(`/requests/${id}/reserve-resources`).then(extract),
+  assignVolunteer:  (id: string, payload: { volunteerId: string; volunteerName: string; estimatedArrival?: string }) =>
+    api.post<{ data: ReliefRequest }>(`/requests/${id}/assign-volunteer`, payload).then(extract),
 
-    async verify(id: string): Promise<ReliefRequest> {
-        return requestsApi.update(id, { status: "verified" });
-    },
+  // ── Volunteer actions ────────────────────────────────────────────────────────
+  markInTransit: (id: string) => api.post<{ data: ReliefRequest }>(`/requests/${id}/in-transit`).then(extract),
+  markDelivered: (id: string) => api.post<{ data: ReliefRequest }>(`/requests/${id}/delivered`).then(extract),
 
-    async reject(id: string, note: string): Promise<ReliefRequest> {
-        return requestsApi.update(id, { status: "rejected", verificationNote: note });
-    },
+  // ── Citizen confirmation ─────────────────────────────────────────────────────
+  confirmDelivery: (id: string, feedback?: string) =>
+    api.post<{ data: ReliefRequest }>(`/requests/${id}/confirm`, { feedback }).then(extract),
 };

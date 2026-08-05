@@ -33,13 +33,15 @@ import ShelterManagement from "./pages/shelter/ShelterManagement.js";
 
 // ── NGO Pages ──────────────────────────────────────────────────────────────────
 import NgoDashboard from "./pages/ngo/NgoDashboard.js";
-import NgoRequests from "./pages/ngo/NgoRequests.js";
+import NgoRequests  from "./pages/ngo/NgoRequests.js";
+import NgoProfile   from "./pages/ngo/NgoProfile.js";
 import InventoryManagement from "./pages/inventory/InventoryManagement.js";
 import Assignments from "./pages/assignments/Assignments.js";
 import Reports from "./pages/reports/Reports.js";
 
 // ── Volunteer Pages ────────────────────────────────────────────────────────────
 import VolunteerDashboard from "./pages/volunteer/VolunteerDashboard.js";
+import VolunteerTasks     from "./pages/volunteer/VolunteerTasks.js";
 
 // ── Admin Pages ────────────────────────────────────────────────────────────────
 import AdminDashboard from "./pages/admin/AdminDashboard.js";
@@ -94,6 +96,7 @@ export function App() {
           <Route element={<AuthenticatedLayout />}>
             <Route path="/ngo/dashboard" element={<NgoDashboard />} />
             <Route path="/ngo/requests" element={<NgoRequests />} />
+            <Route path="/ngo/profile"  element={<NgoProfile />} />
             <Route path="/inventory" element={<InventoryManagement />} />
             <Route path="/assignments" element={<Assignments />} />
             <Route path="/shelters" element={<ShelterManagement />} />
@@ -105,8 +108,7 @@ export function App() {
         <Route element={<ProtectedRoute allowedRoles={["volunteer"]} />}>
           <Route element={<AuthenticatedLayout />}>
             <Route path="/volunteer/dashboard" element={<VolunteerDashboard />} />
-            {/* /volunteer/tasks — to be created by volunteer dev */}
-            <Route path="/volunteer/tasks" element={<Assignments />} />
+            <Route path="/volunteer/tasks"     element={<VolunteerTasks />} />
           </Route>
         </Route>
 
