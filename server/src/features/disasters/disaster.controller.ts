@@ -1,7 +1,18 @@
 import type { Request, Response } from "express";
 import { Disaster } from "./disaster.model.js";
+import type { IDisaster } from "./disaster.model.js";
 
-// List all active / monitoring disasters (used by the request form dropdown)
+// ── Read ──────────────────────────────────────────────────────────────────────
+
+export const getAllDisasters = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const data = await Disaster.find().sort({ startedAt: -1 });
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Failed to fetch disasters", error: String(err) });
+  }
+};
+
 export const getActiveDisasters = async (_req: Request, res: Response): Promise<void> => {
   try {
     const data = await Disaster.find({ status: { $in: ["active", "monitoring"] } }).sort({ startedAt: -1 });
@@ -21,16 +32,98 @@ export const getDisasterById = async (req: Request, res: Response): Promise<void
   }
 };
 
-export const getAllDisasters = async (_req: Request, res: Response): Promise<void> => {
+// ── Create ────────────────────────────────────────────────────────────────────
+
+export const createDisaster = async (req: Request, res: Response): Promise<void> => {
   try {
-    const data = await Disaster.find().sort({ startedAt: -1 });
-    res.json({ success: true, data });
+    const {
+      title, type, severity, status,
+      affectedDistrictIds, affectedDistrictNames,
+      startedAt, description,
+    } = req.body as {
+      title: string;
+      type: IDisaster["type"];
+      severity: IDisaster["severity"];
+      status: IDisaster["status"];
+      affectedDistrictIds: string[];
+      affectedDistrictNames: string[];
+      startedAt?: string;
+      description: string;
+    };
+
+    if (!title?.trim() || !type || !description?.trim()) {
+      res.status(400).json({ success: false, message: "title, type, and description are required" });
+      return;
+    }
+
+    const doc = await Disaster.create({
+      title:                title.trim(),
+      type,
+      severity:             severity ?? "high",
+      status:               status   ?? "active",
+      affectedDistrictIds:  affectedDistrictIds  ?? [],
+      affectedDistrictNames: affectedDistrictNames ?? [],
+      startedAt:            startedAt ? new Date(startedAt) : new Date(),
+      description:          description.trim(),
+    });
+
+    res.status(201).json({ success: true, data: doc });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to fetch disasters", error: String(err) });
+    res.status(500).json({ success: false, message: "Failed to create disaster", error: String(err) });
   }
 };
 
-// Seed demo data — call POST /api/disasters/seed to bootstrap
+// ── Update ────────────────────────────────────────────────────────────────────
+
+export const updateDisaster = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const {
+      title, type, severity, status,
+      affectedDistrictIds, affectedDistrictNames,
+      startedAt, description,
+    } = req.body as Partial<{
+      title: string;
+      type: IDisaster["type"];
+      severity: IDisaster["severity"];
+      status: IDisaster["status"];
+      affectedDistrictIds: string[];
+      affectedDistrictNames: string[];
+      startedAt: string;
+      description: string;
+    }>;
+
+    const update: Record<string, unknown> = {};
+    if (title !== undefined)                 update.title                  = title.trim();
+    if (type !== undefined)                  update.type                   = type;
+    if (severity !== undefined)              update.severity               = severity;
+    if (status !== undefined)                update.status                 = status;
+    if (affectedDistrictIds !== undefined)   update.affectedDistrictIds    = affectedDistrictIds;
+    if (affectedDistrictNames !== undefined) update.affectedDistrictNames  = affectedDistrictNames;
+    if (startedAt !== undefined)             update.startedAt              = new Date(startedAt);
+    if (description !== undefined)           update.description            = description.trim();
+
+    const doc = await Disaster.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
+    if (!doc) { res.status(404).json({ success: false, message: "Disaster not found" }); return; }
+    res.json({ success: true, data: doc });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Failed to update disaster", error: String(err) });
+  }
+};
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+
+export const deleteDisaster = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const doc = await Disaster.findByIdAndDelete(req.params.id);
+    if (!doc) { res.status(404).json({ success: false, message: "Disaster not found" }); return; }
+    res.json({ success: true, message: "Disaster deleted" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Failed to delete disaster", error: String(err) });
+  }
+};
+
+// ── Seed ──────────────────────────────────────────────────────────────────────
+
 export const seedDisasters = async (_req: Request, res: Response): Promise<void> => {
   try {
     const existing = await Disaster.countDocuments();
