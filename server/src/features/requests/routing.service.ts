@@ -15,6 +15,7 @@
 
 import { ReliefRequest, type IRequestLocation } from "./request.model.js";
 import { NGOProfile } from "../ngos/ngo.model.js";
+import { notificationService } from "../notifications/notification.service.js";
 
 export class RoutingService {
   // ── Public API ─────────────────────────────────────────────────────────────
@@ -31,7 +32,7 @@ export class RoutingService {
       const eligible = await this.findEligibleNGOs(location);
 
       if (eligible.length === 0) {
-        await ReliefRequest.findByIdAndUpdate(requestId, {
+        const escalated = await ReliefRequest.findByIdAndUpdate(requestId, {
           status: "escalated",
           $push: {
             routingHistory: {
@@ -42,7 +43,32 @@ export class RoutingService {
               note:       "No eligible NGO found for this location. Escalated to admin.",
             },
           },
-        });
+        }, { new: true });
+
+        // Notify admin
+        notificationService.send({
+          userId:    "demo-admin-001",
+          title:     "Request Escalated — Manual Assignment Needed",
+          message:   `No NGO covers ${location.localBodyName}, ${location.districtName}. A ${escalated?.category ?? "relief"} request needs manual assignment.`,
+          type:      "danger",
+          category:  "system",
+          requestId,
+          link:      `/admin/dashboard`,
+        }).catch(console.error);
+
+        // Notify citizen
+        if (escalated) {
+          notificationService.send({
+            userId:    escalated.createdBy,
+            title:     "Request Escalated to Administrator",
+            message:   `No NGO was immediately available in ${location.districtName}. Your request has been escalated to the system administrator who will assign it manually. You will receive an update shortly.`,
+            type:      "warning",
+            category:  "request",
+            requestId,
+            link:      `/requests/${requestId}`,
+          }).catch(console.error);
+        }
+
         console.log(`[Routing] Request ${requestId} escalated — no NGOs cover ${location.districtName}`);
         return;
       }
@@ -75,6 +101,17 @@ export class RoutingService {
 
       // Increment NGO's current workload counter
       await NGOProfile.findByIdAndUpdate(bestNGO._id, { $inc: { currentWorkload: 1 } });
+
+      // Notify the NGO that a new request has been routed to them
+      notificationService.send({
+        userId:    bestNGO.userId,
+        title:     "New Relief Request Assigned to You",
+        message:   `A new request has been routed to ${bestName}. Category: ${(await ReliefRequest.findById(requestId).lean())?.category ?? "relief"}. Location: ${location.localBodyName}, ${location.districtName}. Please review and accept or reject within 30 minutes.`,
+        type:      "warning",
+        category:  "request",
+        requestId,
+        link:      `/ngo/requests`,
+      }).catch(console.error);
 
       console.log(
         `[Routing] Request ${requestId} → ${bestName} (score: ${bestScore}, ` +

@@ -17,7 +17,8 @@
     "helmet": "^8.3.0",
     "mongoose": "^9.9.1",
     "morgan": "^1.11.0",
-    "multer": "^2.2.0"
+    "multer": "^2.2.0",
+    "nodemailer": "^9.0.4"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
@@ -26,6 +27,7 @@
     "@types/morgan": "^1.9.10",
     "@types/multer": "^2.2.0",
     "@types/node": "^26.1.2",
+    "@types/nodemailer": "^8.0.1",
     "nodemon": "^3.1.14",
     "tsx": "^4.23.5",
     "typescript": "^7.0.2"

@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { ReliefRequest } from "./request.model.js";
 import { routingService } from "./routing.service.js";
 import type { IRequestLocation } from "./request.model.js";
+import { notificationService } from "../notifications/notification.service.js";
 
 // ── Create ────────────────────────────────────────────────────────────────────
 export const createRequest = async (req: Request, res: Response): Promise<void> => {
@@ -92,6 +93,17 @@ export const createRequest = async (req: Request, res: Response): Promise<void> 
     // Fire-and-forget routing — does not block the response
     routingService.routeRequest(newRequest._id.toString(), locationDoc).catch(console.error);
 
+    // Notify citizen: submission confirmed
+    notificationService.send({
+      userId:    createdBy,
+      title:     "Request Submitted Successfully",
+      message:   `Your ${category} request for ${locationDoc.localBodyName}, ${locationDoc.districtName} has been submitted. We are routing it to the nearest NGO — you'll receive updates at each stage.`,
+      type:      "info",
+      category:  "request",
+      requestId: newRequest._id.toString(),
+      link:      `/requests/${newRequest._id}`,
+    }).catch(console.error);
+
     res.status(201).json({
       success: true,
       message: "Relief request submitted. The system is routing it to the nearest NGO.",
@@ -155,6 +167,17 @@ export const ngoAcceptRequest = async (req: Request, res: Response): Promise<voi
       { new: true }
     );
     if (!updated) { res.status(404).json({ success: false, message: "Request not found" }); return; }
+
+    notificationService.send({
+      userId:    updated.createdBy,
+      title:     "Your Request Has Been Accepted",
+      message:   `Good news! ${updated.assignedNGOName ?? "An NGO"} has accepted your ${updated.category} request and is now processing it. They will verify the details and arrange resources shortly.`,
+      type:      "success",
+      category:  "request",
+      requestId: updated._id.toString(),
+      link:      `/requests/${updated._id}`,
+    }).catch(console.error);
+
     res.json({ success: true, message: "Request accepted", data: updated });
   } catch (error) {
     res.status(500).json({ success: false, message: "Accept failed", error: String(error) });
@@ -169,6 +192,17 @@ export const verifyRequest = async (req: Request, res: Response): Promise<void> 
       { new: true }
     );
     if (!updated) { res.status(404).json({ success: false, message: "Request not found" }); return; }
+
+    notificationService.send({
+      userId:    updated.createdBy,
+      title:     "Request Verified ✓",
+      message:   `Your ${updated.category} request has been verified by ${updated.assignedNGOName ?? "the NGO"}. They are now arranging resources for your location.`,
+      type:      "success",
+      category:  "request",
+      requestId: updated._id.toString(),
+      link:      `/requests/${updated._id}`,
+    }).catch(console.error);
+
     res.json({ success: true, message: "Request verified", data: updated });
   } catch (error) {
     res.status(500).json({ success: false, message: "Verify failed", error: String(error) });
@@ -192,6 +226,16 @@ export const rejectRequest = async (req: Request, res: Response): Promise<void> 
       routingService.forwardRequest(reqDocId, ngoId, "declined").catch(console.error);
     }
 
+    notificationService.send({
+      userId:    updated.createdBy,
+      title:     "Request Could Not Be Fulfilled",
+      message:   `Unfortunately your ${updated.category} request was rejected${note ? `: "${note}"` : "."}. The system will automatically find another NGO in your area.`,
+      type:      "warning",
+      category:  "request",
+      requestId: updated._id.toString(),
+      link:      `/requests/${updated._id}`,
+    }).catch(console.error);
+
     res.json({ success: true, message: "Request rejected and forwarded to next NGO", data: updated });
   } catch (error) {
     res.status(500).json({ success: false, message: "Reject failed", error: String(error) });
@@ -206,6 +250,17 @@ export const reserveResources = async (req: Request, res: Response): Promise<voi
       { new: true }
     );
     if (!updated) { res.status(404).json({ success: false, message: "Request not found" }); return; }
+
+    notificationService.send({
+      userId:    updated.createdBy,
+      title:     "Resources Reserved for Your Request",
+      message:   `${updated.assignedNGOName ?? "The NGO"} has reserved resources for your ${updated.category} request. A volunteer is being selected to deliver to ${updated.location?.localBodyName}, ${updated.location?.districtName}.`,
+      type:      "info",
+      category:  "request",
+      requestId: updated._id.toString(),
+      link:      `/requests/${updated._id}`,
+    }).catch(console.error);
+
     res.json({ success: true, message: "Resources reserved", data: updated });
   } catch (error) {
     res.status(500).json({ success: false, message: "Resource reservation failed", error: String(error) });
@@ -225,6 +280,33 @@ export const assignVolunteer = async (req: Request, res: Response): Promise<void
 
     const updated = await ReliefRequest.findByIdAndUpdate(req.params.id, update, { new: true });
     if (!updated) { res.status(404).json({ success: false, message: "Request not found" }); return; }
+
+    const etaText = estimatedArrival
+      ? ` Expected arrival: ${new Date(estimatedArrival).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}.`
+      : "";
+
+    // Notify citizen
+    notificationService.send({
+      userId:    updated.createdBy,
+      title:     "A Volunteer Is Coming to You",
+      message:   `${volunteerName} has been assigned to deliver your ${updated.category} request to ${updated.location?.localBodyName}.${etaText}`,
+      type:      "success",
+      category:  "assignment",
+      requestId: updated._id.toString(),
+      link:      `/requests/${updated._id}`,
+    }).catch(console.error);
+
+    // Notify volunteer
+    notificationService.send({
+      userId:    volunteerId,
+      title:     "New Delivery Task Assigned",
+      message:   `You have a new ${updated.category} delivery task in ${updated.location?.localBodyName}, ${updated.location?.districtName} for ${updated.fullName} (${updated.peopleAffected} people).${etaText}`,
+      type:      "info",
+      category:  "assignment",
+      requestId: updated._id.toString(),
+      link:      `/volunteer/tasks`,
+    }).catch(console.error);
+
     res.json({ success: true, message: "Volunteer assigned", data: updated });
   } catch (error) {
     res.status(500).json({ success: false, message: "Volunteer assignment failed", error: String(error) });
@@ -241,6 +323,17 @@ export const markInTransit = async (req: Request, res: Response): Promise<void> 
       { new: true }
     );
     if (!updated) { res.status(404).json({ success: false, message: "Request not found" }); return; }
+
+    notificationService.send({
+      userId:    updated.createdBy,
+      title:     "Your Relief Is On the Way 🚚",
+      message:   `${updated.assignedVolunteerName ?? "A volunteer"} is now heading to ${updated.location?.localBodyName}, ${updated.location?.districtName} with your ${updated.category} supplies. Please be available to receive them.`,
+      type:      "info",
+      category:  "request",
+      requestId: updated._id.toString(),
+      link:      `/requests/${updated._id}`,
+    }).catch(console.error);
+
     res.json({ success: true, message: "Marked in transit", data: updated });
   } catch (error) {
     res.status(500).json({ success: false, message: "Update failed", error: String(error) });
@@ -255,6 +348,17 @@ export const markDelivered = async (req: Request, res: Response): Promise<void> 
       { new: true }
     );
     if (!updated) { res.status(404).json({ success: false, message: "Request not found" }); return; }
+
+    notificationService.send({
+      userId:    updated.createdBy,
+      title:     "Delivery Completed — Please Confirm",
+      message:   `${updated.assignedVolunteerName ?? "The volunteer"} has marked your ${updated.category} request as delivered. Please open your request and tap "Confirm Delivery" to close the case.`,
+      type:      "success",
+      category:  "request",
+      requestId: updated._id.toString(),
+      link:      `/requests/${updated._id}`,
+    }).catch(console.error);
+
     res.json({ success: true, message: "Marked as delivered", data: updated });
   } catch (error) {
     res.status(500).json({ success: false, message: "Update failed", error: String(error) });
@@ -286,6 +390,30 @@ export const confirmDelivery = async (req: Request, res: Response): Promise<void
         { $inc: { currentWorkload: -1 } }
       );
     }
+
+    // Notify NGO that citizen confirmed receipt
+    if (updated.assignedNGO) {
+      notificationService.send({
+        userId:    updated.assignedNGO,
+        title:     "Delivery Confirmed by Citizen ✓",
+        message:   `${updated.fullName} has confirmed receipt of the ${updated.category} delivery in ${updated.location?.localBodyName}.${feedback ? ` Feedback: "${feedback}"` : ""} The case is now closed.`,
+        type:      "success",
+        category:  "request",
+        requestId: updated._id.toString(),
+        link:      `/ngo/requests`,
+      }).catch(console.error);
+    }
+
+    // Also notify citizen that case is closed
+    notificationService.send({
+      userId:    updated.createdBy,
+      title:     "Request Completed — Thank You",
+      message:   `Your ${updated.category} request is now closed. Thank you for confirming delivery. Stay safe.`,
+      type:      "success",
+      category:  "request",
+      requestId: updated._id.toString(),
+      link:      `/requests/${updated._id}`,
+    }).catch(console.error);
 
     res.json({ success: true, message: "Delivery confirmed — request completed", data: updated });
   } catch (error) {
