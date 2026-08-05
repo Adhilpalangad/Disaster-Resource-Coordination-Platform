@@ -1,30 +1,36 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { CheckCircle, XCircle, RefreshCw, MapPin, Phone, Clock, User, AlertCircle } from "lucide-react";
-import { requestsApi } from "../../services/requestsApi.js";
-import type { ReliefRequest, RequestStatus, UrgencyLevel, RequestCategory } from "../../types/index.js";
-import PageContainer from "../../components/PageContainer.js";
-import PageHeader from "../../components/PageHeader.js";
-import EmptyState from "../../components/EmptyState.js";
+import {
+  CheckCircle, XCircle, RefreshCw, MapPin, Phone, Clock, User,
+  AlertCircle, Package, Utensils, Droplets, HeartPulse, Home,
+  AlertTriangle, Truck, Users, ChevronDown, UserCheck,
+} from "lucide-react";
+import { requestsApi }  from "../../services/requestsApi.js";
+import type { ReliefRequest, UrgencyLevel, RequestCategory } from "../../types/index.js";
+import PageContainer  from "../../components/PageContainer.js";
+import PageHeader     from "../../components/PageHeader.js";
+import StatusBadge    from "../../components/StatusBadge.js";
+import EmptyState     from "../../components/EmptyState.js";
 
 const URGENCY_COLOR: Record<UrgencyLevel, string> = {
-  low: "var(--success)", medium: "var(--warning)",
-  high: "var(--danger)", critical: "#7c3aed",
+  low: "var(--success)", medium: "var(--warning)", high: "var(--danger)", critical: "#7c3aed",
 };
+const CATEGORY_ICONS: Record<RequestCategory, React.ElementType> = {
+  food: Utensils, water: Droplets, medicine: HeartPulse,
+  shelter: Home, rescue: AlertTriangle, transportation: Truck, other: Package,
+};
+const DEMO_VOLUNTEERS = [
+  { id: "demo-volunteer-001", name: "Sneha Pillai",  phone: "+91 98765 22222" },
+  { id: "vol-field-002",      name: "Arun Kumar",    phone: "+91 90001 10002" },
+  { id: "vol-field-003",      name: "Priya Suresh",  phone: "+91 90001 10003" },
+];
 
-const STATUS_LABEL: Record<RequestStatus, string> = {
-  pending_verification: "Pending Review",
-  verified: "Verified",
-  rejected: "Rejected",
-  assigned: "Assigned",
-  in_progress: "In Progress",
-  resolved: "Resolved",
-  closed: "Closed",
-};
-
-const CATEGORY_ICON: Record<string, string> = {
-  food: "🍱", water: "💧", medical: "🏥", shelter: "🏠",
-  clothing: "👕", rescue: "🚨", other: "📦",
-};
+type TabId = "incoming" | "processing" | "dispatched" | "closed";
+const TABS: { id: TabId; label: string; statuses: string[] }[] = [
+  { id: "incoming",   label: "Incoming",   statuses: ["ngo_assigned"] },
+  { id: "processing", label: "Processing", statuses: ["ngo_accepted", "verified", "resources_reserved"] },
+  { id: "dispatched", label: "Dispatched", statuses: ["volunteer_assigned", "in_transit"] },
+  { id: "closed",     label: "Closed",     statuses: ["delivered", "completed", "rejected", "escalated"] },
+];
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -36,56 +42,44 @@ function timeAgo(iso: string): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-interface RejectModalProps {
+// ── Reject Modal ──────────────────────────────────────────────────────────────
+const RejectModal: React.FC<{
   requestId: string;
   onConfirm: (id: string, note: string) => Promise<void>;
   onClose: () => void;
-}
-
-const RejectModal: React.FC<RejectModalProps> = ({ requestId, onConfirm, onClose }) => {
+}> = ({ requestId, onConfirm, onClose }) => {
   const [note, setNote] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  const handleConfirm = async () => {
-    if (!note.trim()) return;
-    setSubmitting(true);
-    await onConfirm(requestId, note.trim());
-    setSubmitting(false);
-  };
-
+  const [busy, setBusy] = useState(false);
   return (
     <div
-      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.4)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}
     >
-      <div style={{ backgroundColor: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "16px", padding: "28px", maxWidth: "480px", width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+      <div style={{ backgroundColor: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "16px", padding: "28px", maxWidth: "480px", width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.18)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
           <XCircle size={20} color="var(--danger)" />
           <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--text-h)" }}>Reject Request</h3>
         </div>
-        <p style={{ margin: "0 0 16px", fontSize: "14px", color: "var(--secondary)", lineHeight: 1.5 }}>
-          Provide a reason for rejection. This will be shown to the citizen so they can re-submit with corrections.
+        <p style={{ margin: "0 0 14px", fontSize: "13px", color: "var(--secondary)", lineHeight: 1.5 }}>
+          Provide a reason so the citizen and routing engine can act on it.
         </p>
         <textarea
           value={note}
-          onChange={(e) => setNote(e.target.value)}
+          onChange={e => setNote(e.target.value)}
           rows={4}
-          placeholder="e.g. Duplicate request already assigned. / Location is outside our operational zone."
-          style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1px solid var(--border)", fontSize: "13px", fontFamily: "var(--sans)", boxSizing: "border-box", resize: "vertical" }}
+          placeholder="e.g. Location outside operational zone. / Duplicate submission."
+          style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1px solid var(--border)", fontSize: "13px", fontFamily: "var(--sans)", boxSizing: "border-box", resize: "vertical", backgroundColor: "var(--bg)", color: "var(--text-h)" }}
         />
         <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
-          <button
-            onClick={onClose}
-            style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid var(--border)", backgroundColor: "var(--bg)", color: "var(--text-h)", fontWeight: 600, fontSize: "13px", cursor: "pointer" }}
-          >
+          <button onClick={onClose} style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid var(--border)", backgroundColor: "var(--bg)", color: "var(--text-h)", fontWeight: 600, fontSize: "13px", cursor: "pointer" }}>
             Cancel
           </button>
           <button
-            onClick={handleConfirm}
-            disabled={!note.trim() || submitting}
-            style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "none", backgroundColor: submitting || !note.trim() ? "var(--secondary)" : "var(--danger)", color: "#fff", fontWeight: 600, fontSize: "13px", cursor: !note.trim() || submitting ? "not-allowed" : "pointer" }}
+            onClick={async () => { if (!note.trim()) return; setBusy(true); await onConfirm(requestId, note.trim()); setBusy(false); }}
+            disabled={!note.trim() || busy}
+            style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "none", backgroundColor: !note.trim() || busy ? "var(--secondary)" : "var(--danger)", color: "#fff", fontWeight: 600, fontSize: "13px", cursor: !note.trim() || busy ? "not-allowed" : "pointer" }}
           >
-            {submitting ? "Rejecting…" : "Confirm Rejection"}
+            {busy ? "Rejecting…" : "Confirm Rejection"}
           </button>
         </div>
       </div>
@@ -93,77 +87,197 @@ const RejectModal: React.FC<RejectModalProps> = ({ requestId, onConfirm, onClose
   );
 };
 
-export const NgoRequests: React.FC = () => {
-  const [requests, setRequests] = useState<ReliefRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [rejectTarget, setRejectTarget] = useState<string | null>(null);
+// ── Assign Volunteer Modal ────────────────────────────────────────────────────
+const AssignVolunteerModal: React.FC<{
+  requestId: string;
+  onConfirm: (id: string, vid: string, name: string, eta: string) => Promise<void>;
+  onClose: () => void;
+}> = ({ requestId, onConfirm, onClose }) => {
+  const [selectedId, setSelectedId] = useState(DEMO_VOLUNTEERS[0].id);
+  const [customName, setCustomName] = useState("");
+  const [useCustom,  setUseCustom]  = useState(false);
+  const [eta,        setEta]        = useState("");
+  const [busy,       setBusy]       = useState(false);
 
-  const [filterStatus, setFilterStatus] = useState<RequestStatus | "">( "pending_verification");
-  const [filterUrgency, setFilterUrgency] = useState<UrgencyLevel | "">("");
-  const [filterCategory, setFilterCategory] = useState<RequestCategory | "">("");
+  const finalName = useCustom ? customName.trim() : (DEMO_VOLUNTEERS.find(v => v.id === selectedId)?.name ?? "");
+  const finalId   = useCustom ? ("vol-" + Date.now()) : selectedId;
+
+  return (
+    <div
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}
+    >
+      <div style={{ backgroundColor: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "16px", padding: "28px", maxWidth: "460px", width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.18)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
+          <UserCheck size={20} color="#7c3aed" />
+          <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--text-h)" }}>Assign Volunteer</h3>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          {!useCustom ? (
+            <div>
+              <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--secondary)", marginBottom: "8px" }}>Select Volunteer</label>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {DEMO_VOLUNTEERS.map(v => (
+                  <label
+                    key={v.id}
+                    style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", borderRadius: "9px", border: `1px solid ${selectedId === v.id ? "#7c3aed" : "var(--border)"}`, backgroundColor: selectedId === v.id ? "rgba(124,58,237,0.06)" : "var(--bg)", cursor: "pointer" }}
+                  >
+                    <input type="radio" name="vol" checked={selectedId === v.id} onChange={() => setSelectedId(v.id)} style={{ accentColor: "#7c3aed", flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--text-h)" }}>{v.name}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--secondary)" }}>{v.phone}</p>
+                    </div>
+                    {v.id === "demo-volunteer-001" && (
+                      <span style={{ fontSize: "10px", fontWeight: 700, padding: "2px 6px", borderRadius: "4px", backgroundColor: "rgba(5,150,105,0.1)", color: "var(--success)" }}>LINKED</span>
+                    )}
+                  </label>
+                ))}
+              </div>
+              <button
+                onClick={() => setUseCustom(true)}
+                style={{ marginTop: "8px", background: "none", border: "none", fontSize: "12px", color: "var(--secondary)", cursor: "pointer", padding: 0, textDecoration: "underline" }}
+              >
+                Enter custom name
+              </button>
+            </div>
+          ) : (
+            <div>
+              <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--secondary)", marginBottom: "6px" }}>Custom Volunteer Name</label>
+              <input
+                type="text"
+                value={customName}
+                onChange={e => setCustomName(e.target.value)}
+                placeholder="Full name"
+                style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid var(--border)", fontSize: "13px", boxSizing: "border-box", backgroundColor: "var(--bg)", color: "var(--text-h)" }}
+              />
+              <button
+                onClick={() => { setUseCustom(false); setCustomName(""); }}
+                style={{ marginTop: "6px", background: "none", border: "none", fontSize: "12px", color: "var(--secondary)", cursor: "pointer", padding: 0, textDecoration: "underline" }}
+              >
+                Choose from list
+              </button>
+            </div>
+          )}
+          <div>
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--secondary)", marginBottom: "6px" }}>Estimated Arrival (optional)</label>
+            <input
+              type="datetime-local"
+              value={eta}
+              onChange={e => setEta(e.target.value)}
+              style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid var(--border)", fontSize: "13px", boxSizing: "border-box", backgroundColor: "var(--bg)", color: "var(--text-h)" }}
+            />
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+          <button onClick={onClose} style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid var(--border)", backgroundColor: "var(--bg)", color: "var(--text-h)", fontWeight: 600, fontSize: "13px", cursor: "pointer" }}>
+            Cancel
+          </button>
+          <button
+            onClick={async () => { if (!finalName) return; setBusy(true); await onConfirm(requestId, finalId, finalName, eta); setBusy(false); }}
+            disabled={!finalName || busy}
+            style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "none", backgroundColor: !finalName || busy ? "var(--secondary)" : "#7c3aed", color: "#fff", fontWeight: 700, fontSize: "13px", cursor: !finalName || busy ? "not-allowed" : "pointer" }}
+          >
+            {busy ? "Assigning…" : "Assign Volunteer"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Main Component ────────────────────────────────────────────────────────────
+export const NgoRequests: React.FC = () => {
+  const [allRequests,   setAllRequests]   = useState<ReliefRequest[]>([]);
+  const [loading,       setLoading]       = useState(true);
+  const [error,         setError]         = useState("");
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [rejectTarget,  setRejectTarget]  = useState<string | null>(null);
+  const [assignTarget,  setAssignTarget]  = useState<string | null>(null);
+  const [expandedId,    setExpandedId]    = useState<string | null>(null);
+  const [activeTab,     setActiveTab]     = useState<TabId>("incoming");
 
   const fetchRequests = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const data = await requestsApi.getAll({
-        status: filterStatus || undefined,
-        urgency: filterUrgency || undefined,
-        category: filterCategory || undefined,
-      });
-      setRequests(data);
-    } catch {
-      setError("Could not load requests. Make sure the server is running.");
-    } finally {
-      setLoading(false);
-    }
-  }, [filterStatus, filterUrgency, filterCategory]);
+    setLoading(true); setError("");
+    try { setAllRequests(await requestsApi.getAll()); }
+    catch { setError("Could not load requests. Make sure the server is running."); }
+    finally { setLoading(false); }
+  }, []);
 
   useEffect(() => { fetchRequests(); }, [fetchRequests]);
 
-  const handleVerify = async (id: string) => {
+  const tabRequests = allRequests.filter(r =>
+    TABS.find(t => t.id === activeTab)?.statuses.includes(r.status)
+  );
+
+  const act = async (id: string, fn: () => Promise<ReliefRequest>) => {
     setActionLoading(id);
     try {
-      const updated = await requestsApi.verify(id);
-      setRequests((prev) => prev.map((r) => r._id === id ? updated : r));
+      const updated = await fn();
+      setAllRequests(prev => prev.map(r => r._id === id ? updated : r));
     } catch {
-      alert("Failed to verify. Please try again.");
+      alert("Action failed. Please try again.");
     } finally {
       setActionLoading(null);
     }
   };
 
+  const handleAccept    = (id: string) => act(id, () => requestsApi.accept(id));
+  const handleVerify    = (id: string) => act(id, () => requestsApi.verify(id));
+  const handleReserve   = (id: string) => act(id, () => requestsApi.reserveResources(id));
+  const handleInTransit = (id: string) => act(id, () => requestsApi.markInTransit(id));
+  const handleDelivered = (id: string) => act(id, () => requestsApi.markDelivered(id));
+
   const handleReject = async (id: string, note: string) => {
     setActionLoading(id);
     try {
       const updated = await requestsApi.reject(id, note);
-      setRequests((prev) => prev.map((r) => r._id === id ? updated : r));
+      setAllRequests(prev => prev.map(r => r._id === id ? updated : r));
     } catch {
-      alert("Failed to reject. Please try again.");
+      alert("Rejection failed.");
     } finally {
       setActionLoading(null);
       setRejectTarget(null);
     }
   };
 
-  const pendingCount = requests.filter((r) => r.status === "pending_verification").length;
-  const criticalCount = requests.filter((r) => r.urgency === "critical" || r.urgency === "high").length;
-  const verifiedToday = requests.filter((r) => {
-    const updated = new Date(r.updatedAt).getTime();
-    return r.status === "verified" && Date.now() - updated < 86400000;
-  }).length;
+  const handleAssign = async (id: string, volunteerId: string, volunteerName: string, estimatedArrival: string) => {
+    setActionLoading(id);
+    try {
+      const updated = await requestsApi.assignVolunteer(id, {
+        volunteerId,
+        volunteerName,
+        ...(estimatedArrival && { estimatedArrival }),
+      });
+      setAllRequests(prev => prev.map(r => r._id === id ? updated : r));
+    } catch {
+      alert("Assignment failed.");
+    } finally {
+      setActionLoading(null);
+      setAssignTarget(null);
+    }
+  };
+
+  type Btn = { label: string; color: string; fn: () => void; outline?: boolean };
+  const getActions = (req: ReliefRequest): Btn[] => {
+    const id = req._id;
+    const b = (label: string, color: string, fn: () => void, outline = false): Btn => ({ label, color, fn, outline });
+    switch (req.status) {
+      case "ngo_assigned":       return [b("Accept", "var(--success)", () => handleAccept(id)), b("Reject", "var(--danger)", () => setRejectTarget(id), true)];
+      case "ngo_accepted":       return [b("Verify", "var(--success)", () => handleVerify(id)), b("Reject", "var(--danger)", () => setRejectTarget(id), true)];
+      case "verified":           return [b("Reserve Resources", "var(--primary)", () => handleReserve(id))];
+      case "resources_reserved": return [b("Assign Volunteer",  "#7c3aed",        () => setAssignTarget(id))];
+      case "volunteer_assigned": return [b("Mark In Transit",   "var(--warning)", () => handleInTransit(id))];
+      case "in_transit":         return [b("Mark Delivered",    "var(--success)", () => handleDelivered(id))];
+      default:                   return [];
+    }
+  };
 
   return (
     <PageContainer>
       <PageHeader
-        title="Verification Queue"
-        description="Review and verify incoming relief requests from citizens in your zone."
-        breadcrumbs={[
-          { label: "NGO Dashboard", path: "/ngo/dashboard" },
-          { label: "Relief Requests" },
-        ]}
+        title="Request Management"
+        description="Accept, verify, resource-match, and dispatch volunteers for incoming relief requests."
+        breadcrumbs={[{ label: "NGO Dashboard", path: "/ngo/dashboard" }, { label: "Requests" }]}
         actions={
           <button
             onClick={fetchRequests}
@@ -174,65 +288,31 @@ export const NgoRequests: React.FC = () => {
         }
       />
 
-      {/* KPI strip */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "24px" }}>
-        {[
-          { label: "Awaiting Verification", value: pendingCount, color: "var(--warning)" },
-          { label: "High / Critical Urgency", value: criticalCount, color: "var(--danger)" },
-          { label: "Verified Today", value: verifiedToday, color: "var(--success)" },
-        ].map(({ label, value, color }) => (
-          <div key={label} style={{ backgroundColor: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "12px", padding: "20px", boxShadow: "var(--shadow)" }}>
-            <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "var(--secondary)", textTransform: "uppercase" }}>{label}</p>
-            <p style={{ margin: "4px 0 0", fontSize: "28px", fontWeight: 700, color }}>{value}</p>
-          </div>
-        ))}
+      {/* Tab bar */}
+      <div style={{ display: "flex", gap: "4px", marginBottom: "20px", backgroundColor: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "12px", padding: "4px" }}>
+        {TABS.map(t => {
+          const count  = allRequests.filter(r => t.statuses.includes(r.status)).length;
+          const active = activeTab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", padding: "8px 10px", borderRadius: "8px", border: "none", cursor: "pointer", fontWeight: 600, fontSize: "13px", backgroundColor: active ? "var(--primary)" : "transparent", color: active ? "#fff" : "var(--secondary)", transition: "all 0.15s" }}
+            >
+              {t.label}
+              {count > 0 && (
+                <span style={{ minWidth: "18px", height: "18px", borderRadius: "99px", backgroundColor: active ? "rgba(255,255,255,0.25)" : "rgba(2,132,199,0.12)", color: active ? "#fff" : "var(--primary)", fontSize: "11px", fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 5px" }}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Filters */}
-      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "20px" }}>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value as RequestStatus | "")}
-          style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--border)", backgroundColor: "var(--card-bg)", fontSize: "13px", color: "var(--text-h)" }}
-        >
-          <option value="">All Statuses</option>
-          {(Object.keys(STATUS_LABEL) as RequestStatus[]).map((s) => (
-            <option key={s} value={s}>{STATUS_LABEL[s]}</option>
-          ))}
-        </select>
-
-        <select
-          value={filterUrgency}
-          onChange={(e) => setFilterUrgency(e.target.value as UrgencyLevel | "")}
-          style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--border)", backgroundColor: "var(--card-bg)", fontSize: "13px", color: "var(--text-h)" }}
-        >
-          <option value="">All Urgency</option>
-          <option value="critical">Critical</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
-
-        <select
-          value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value as RequestCategory | "")}
-          style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--border)", backgroundColor: "var(--card-bg)", fontSize: "13px", color: "var(--text-h)" }}
-        >
-          <option value="">All Categories</option>
-          <option value="food">Food</option>
-          <option value="water">Water</option>
-          <option value="medical">Medical</option>
-          <option value="shelter">Shelter</option>
-          <option value="clothing">Clothing</option>
-          <option value="rescue">Rescue</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
-
-      {/* Content */}
       {loading ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          {[1, 2, 3].map((i) => (
+          {[1, 2, 3].map(i => (
             <div key={i} style={{ height: "120px", backgroundColor: "var(--border)", borderRadius: "12px", opacity: 0.5 }} />
           ))}
         </div>
@@ -240,108 +320,128 @@ export const NgoRequests: React.FC = () => {
         <div style={{ padding: "16px", borderRadius: "10px", backgroundColor: "rgba(239,68,68,0.08)", border: "1px solid var(--danger)", color: "var(--danger)", display: "flex", alignItems: "center", gap: "10px", fontSize: "14px" }}>
           <AlertCircle size={18} /> {error}
         </div>
-      ) : requests.length === 0 ? (
+      ) : tabRequests.length === 0 ? (
         <EmptyState
           icon={<CheckCircle size={32} />}
-          title="All clear"
-          description="No requests match the current filters. Change filters to see more."
+          title={`No ${TABS.find(t => t.id === activeTab)?.label.toLowerCase()} requests`}
+          description={activeTab === "incoming" ? "New requests routed to you will appear here." : "Nothing here right now."}
         />
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-          {requests.map((req) => {
-            const urgencyColor = URGENCY_COLOR[req.urgency];
-            const isPending = req.status === "pending_verification";
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          {tabRequests.map(req => {
+            const urgColor = URGENCY_COLOR[req.urgency as UrgencyLevel] ?? "var(--secondary)";
+            const Icon     = CATEGORY_ICONS[req.category as RequestCategory] ?? Package;
             const isActing = actionLoading === req._id;
+            const actions  = getActions(req);
+            const expanded = expandedId === req._id;
 
             return (
               <div
                 key={req._id}
-                style={{
-                  backgroundColor: "var(--card-bg)",
-                  border: "1px solid var(--border)",
-                  borderLeft: `4px solid ${urgencyColor}`,
-                  borderRadius: "12px",
-                  padding: "20px",
-                  boxShadow: "var(--shadow)",
-                }}
+                style={{ backgroundColor: "var(--card-bg)", border: "1px solid var(--border)", borderLeft: `4px solid ${urgColor}`, borderRadius: "12px", overflow: "hidden", boxShadow: "var(--shadow)" }}
               >
-                {/* Top row */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px", marginBottom: "12px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: "20px" }}>{CATEGORY_ICON[req.category] ?? "📦"}</span>
-                    <span style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-h)", textTransform: "capitalize" }}>
-                      {req.category.replace("_", " ")}
-                    </span>
-                    <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "99px", backgroundColor: `${urgencyColor}18`, color: urgencyColor, textTransform: "uppercase" }}>
-                      {req.urgency}
-                    </span>
-                    <span style={{
-                      fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "99px",
-                      backgroundColor: isPending ? "rgba(245,158,11,0.12)" : req.status === "verified" ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.12)",
-                      color: isPending ? "var(--warning)" : req.status === "verified" ? "var(--success)" : "var(--danger)",
-                    }}>
-                      {STATUS_LABEL[req.status]}
-                    </span>
+                {/* Card header row */}
+                <div style={{ padding: "14px 18px", display: "flex", alignItems: "flex-start", gap: "12px" }}>
+                  <div style={{ width: "36px", height: "36px", borderRadius: "8px", backgroundColor: `${urgColor}18`, color: urgColor, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <Icon size={16} />
                   </div>
-
-                  {isPending && (
-                    <div style={{ display: "flex", gap: "8px" }}>
-                      <button
-                        onClick={() => handleVerify(req._id)}
-                        disabled={isActing}
-                        style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--success)", color: "#fff", fontWeight: 600, fontSize: "13px", cursor: isActing ? "not-allowed" : "pointer", opacity: isActing ? 0.6 : 1 }}
-                      >
-                        <CheckCircle size={14} /> {isActing ? "…" : "Verify"}
-                      </button>
-                      <button
-                        onClick={() => setRejectTarget(req._id)}
-                        disabled={isActing}
-                        style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "8px", border: "1px solid var(--danger)", backgroundColor: "transparent", color: "var(--danger)", fontWeight: 600, fontSize: "13px", cursor: isActing ? "not-allowed" : "pointer", opacity: isActing ? 0.6 : 1 }}
-                      >
-                        <XCircle size={14} /> Reject
-                      </button>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
+                      <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-h)", textTransform: "capitalize" }}>{req.category}</span>
+                      <span style={{ fontSize: "10px", fontWeight: 700, padding: "2px 7px", borderRadius: "99px", backgroundColor: `${urgColor}18`, color: urgColor, textTransform: "uppercase" }}>{req.urgency}</span>
+                      <StatusBadge status={req.status} />
                     </div>
-                  )}
-                </div>
-
-                {/* Description */}
-                <p style={{ margin: "0 0 12px", fontSize: "14px", color: "var(--text-h)", lineHeight: 1.55, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" }}>
-                  {req.description}
-                </p>
-
-                {/* Meta */}
-                <div style={{ display: "flex", gap: "20px", fontSize: "12px", color: "var(--secondary)", flexWrap: "wrap" }}>
-                  <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                    <MapPin size={12} /> {req.location}
-                  </span>
-                  {req.contactNumber && (
-                    <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                      <Phone size={12} /> {req.contactNumber}
-                    </span>
-                  )}
-                  {req.createdByName && (
-                    <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                      <User size={12} /> {req.createdByName}
-                    </span>
-                  )}
-                  <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                    <Clock size={12} /> {timeAgo(req.createdAt)}
-                  </span>
-                </div>
-
-                {req.status === "rejected" && req.verificationNote && (
-                  <div style={{ marginTop: "12px", padding: "8px 12px", borderRadius: "8px", backgroundColor: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", fontSize: "12px", color: "var(--danger)" }}>
-                    <strong>Rejection note:</strong> {req.verificationNote}
+                    <p style={{ margin: "0 0 5px", fontSize: "13px", color: "var(--text-h)", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                      {req.description}
+                    </p>
+                    <div style={{ display: "flex", gap: "12px", fontSize: "12px", color: "var(--secondary)", flexWrap: "wrap" }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                        <MapPin size={10} />
+                        {[req.location?.localBodyName, req.location?.districtName].filter(Boolean).join(", ") || "Unknown location"}
+                      </span>
+                      <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                        <Users size={10} /> {req.peopleAffected} {req.peopleAffected === 1 ? "person" : "people"}
+                      </span>
+                      <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                        <Clock size={10} /> {timeAgo(req.createdAt)}
+                      </span>
+                      {req.fullName && (
+                        <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                          <User size={10} /> {req.fullName}
+                        </span>
+                      )}
+                      {req.assignedVolunteerName && (
+                        <span style={{ display: "flex", alignItems: "center", gap: "3px", color: "#7c3aed", fontWeight: 600 }}>
+                          <UserCheck size={10} /> {req.assignedVolunteerName}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                )}
+                  {/* Action buttons */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "5px", flexShrink: 0, alignItems: "stretch" }}>
+                    {actions.map((a, i) => (
+                      <button
+                        key={i}
+                        onClick={a.fn}
+                        disabled={isActing}
+                        style={{ padding: "6px 11px", borderRadius: "6px", border: `1px solid ${a.color}`, backgroundColor: a.outline ? "transparent" : (isActing ? "var(--secondary)" : a.color), color: a.outline ? a.color : "#fff", fontWeight: 600, fontSize: "12px", cursor: isActing ? "not-allowed" : "pointer", opacity: isActing ? 0.6 : 1, whiteSpace: "nowrap" }}
+                      >
+                        {a.label}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setExpandedId(expanded ? null : req._id)}
+                      style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", padding: "5px 10px", borderRadius: "6px", border: "1px solid var(--border)", backgroundColor: "var(--bg)", color: "var(--secondary)", fontSize: "11px", cursor: "pointer", marginTop: actions.length ? "2px" : 0 }}
+                    >
+                      Details <ChevronDown size={11} style={{ transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+                    </button>
+                  </div>
+                </div>
 
-                {req.imageUrl && (
-                  <div style={{ marginTop: "12px" }}>
-                    <img
-                      src={`${import.meta.env.VITE_API_URL?.replace("/api", "") ?? "http://localhost:5000"}${req.imageUrl}`}
-                      alt="Attached evidence"
-                      style={{ maxHeight: "160px", borderRadius: "8px", border: "1px solid var(--border)", objectFit: "cover" }}
-                    />
+                {/* Expanded details */}
+                {expanded && (
+                  <div style={{ padding: "12px 18px 14px", borderTop: "1px solid var(--border)", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px" }}>
+                    <div>
+                      <p style={{ margin: "0 0 5px", fontSize: "11px", fontWeight: 700, color: "var(--secondary)", textTransform: "uppercase" }}>Contact</p>
+                      {req.mobileNumber && (
+                        <p style={{ margin: "0 0 3px", fontSize: "13px", color: "var(--text-h)", display: "flex", alignItems: "center", gap: "5px" }}>
+                          <Phone size={11} /> {req.mobileNumber}
+                        </p>
+                      )}
+                      {(req.ageGroups?.length ?? 0) > 0 && (
+                        <p style={{ margin: "3px 0 0", fontSize: "12px", color: "var(--secondary)" }}>Age groups: {req.ageGroups?.join(", ")}</p>
+                      )}
+                      {(req.specialNeeds?.filter(s => s !== "none").length ?? 0) > 0 && (
+                        <p style={{ margin: "3px 0 0", fontSize: "12px", color: "var(--danger)" }}>Special needs: {req.specialNeeds?.filter(s => s !== "none").join(", ")}</p>
+                      )}
+                    </div>
+                    <div>
+                      <p style={{ margin: "0 0 5px", fontSize: "11px", fontWeight: 700, color: "var(--secondary)", textTransform: "uppercase" }}>Full Location</p>
+                      <p style={{ margin: 0, fontSize: "12px", color: "var(--text-h)", lineHeight: 1.6 }}>
+                        {[req.location?.wardName, req.location?.localBodyName, req.location?.talukName, req.location?.districtName, "Kerala"].filter(Boolean).join(" › ")}
+                      </p>
+                      {req.location?.landmark && (
+                        <p style={{ margin: "3px 0 0", fontSize: "12px", color: "var(--secondary)" }}>Near: {req.location.landmark}</p>
+                      )}
+                    </div>
+                    {req.assignedVolunteerName && (
+                      <div>
+                        <p style={{ margin: "0 0 5px", fontSize: "11px", fontWeight: 700, color: "var(--secondary)", textTransform: "uppercase" }}>Volunteer Assigned</p>
+                        <p style={{ margin: "0 0 3px", fontSize: "13px", color: "#7c3aed", fontWeight: 600, display: "flex", alignItems: "center", gap: "5px" }}>
+                          <UserCheck size={11} /> {req.assignedVolunteerName}
+                        </p>
+                        {req.estimatedArrival && (
+                          <p style={{ margin: 0, fontSize: "12px", color: "var(--secondary)" }}>
+                            ETA: {new Date(req.estimatedArrival).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {req.status === "rejected" && req.verificationNote && (
+                      <div style={{ gridColumn: "1/-1", padding: "9px 12px", borderRadius: "8px", backgroundColor: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", fontSize: "12px", color: "var(--danger)" }}>
+                        <strong>Rejection note:</strong> {req.verificationNote}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -351,11 +451,10 @@ export const NgoRequests: React.FC = () => {
       )}
 
       {rejectTarget && (
-        <RejectModal
-          requestId={rejectTarget}
-          onConfirm={handleReject}
-          onClose={() => setRejectTarget(null)}
-        />
+        <RejectModal requestId={rejectTarget} onConfirm={handleReject} onClose={() => setRejectTarget(null)} />
+      )}
+      {assignTarget && (
+        <AssignVolunteerModal requestId={assignTarget} onConfirm={handleAssign} onClose={() => setAssignTarget(null)} />
       )}
     </PageContainer>
   );
