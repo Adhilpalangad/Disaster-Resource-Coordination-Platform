@@ -5,10 +5,11 @@ import morgan from "morgan";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import requestRouter  from "./features/requests/request.routes.js";
-import locationRouter from "./features/location/location.routes.js";
-import disasterRouter from "./features/disasters/disaster.routes.js";
-import ngoRouter      from "./features/ngos/ngo.routes.js";
+import requestRouter      from "./features/requests/request.routes.js";
+import locationRouter     from "./features/location/location.routes.js";
+import disasterRouter     from "./features/disasters/disaster.routes.js";
+import ngoRouter          from "./features/ngos/ngo.routes.js";
+import notificationRouter from "./features/notifications/notification.routes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -24,10 +25,11 @@ app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "../../uploads")));
 
 // ── API Routes ────────────────────────────────────────────────────────────────
-app.use("/api/requests",  requestRouter);
-app.use("/api/locations", locationRouter);
-app.use("/api/disasters", disasterRouter);
-app.use("/api/ngos",      ngoRouter);
+app.use("/api/requests",      requestRouter);
+app.use("/api/locations",     locationRouter);
+app.use("/api/disasters",     disasterRouter);
+app.use("/api/ngos",          ngoRouter);
+app.use("/api/notifications", notificationRouter);
 
 app.get("/", (_req, res) => {
   res.json({ success: true, message: "Disaster Platform API v2 — request routing enabled" });
