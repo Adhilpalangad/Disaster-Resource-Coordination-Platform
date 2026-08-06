@@ -6,6 +6,8 @@ import React, {
   useCallback,
 } from "react";
 import type { User, UserRole, LoginCredentials, RegisterPayload } from "../types/index.js";
+import { supabase } from "../lib/supabase.js";
+import api from "../services/api.js";
 
 // ─── Context Shape ─────────────────────────────────────────────────────────────
 
@@ -14,50 +16,11 @@ interface AuthContextValue {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
-  register: (payload: RegisterPayload) => Promise<void>;
-  logout: () => void;
+  login: (credentials: LoginCredentials) => Promise<string>;
+  register: (payload: RegisterPayload) => Promise<string>;
+  logout: () => Promise<void>;
   getDashboardPath: () => string;
 }
-
-// ─── Demo Accounts ─────────────────────────────────────────────────────────────
-// These are used for local development / UI structure testing.
-// When the backend auth is ready, replace login() and register() with real API calls.
-
-const DEMO_ACCOUNTS: Record<string, User & { password: string }> = {
-  "citizen@demo.com": {
-    id: "demo-citizen-001",
-    name: "Riya Menon",
-    email: "citizen@demo.com",
-    role: "citizen",
-    phone: "+91 98765 43210",
-    password: "demo1234",
-  },
-  "ngo@demo.com": {
-    id: "demo-ngo-001",
-    name: "Arjun Nair",
-    email: "ngo@demo.com",
-    role: "ngo",
-    organizationName: "Kerala Relief Foundation",
-    phone: "+91 98765 11111",
-    password: "demo1234",
-  },
-  "volunteer@demo.com": {
-    id: "demo-volunteer-001",
-    name: "Sneha Pillai",
-    email: "volunteer@demo.com",
-    role: "volunteer",
-    phone: "+91 98765 22222",
-    password: "demo1234",
-  },
-  "admin@demo.com": {
-    id: "demo-admin-001",
-    name: "Admin User",
-    email: "admin@demo.com",
-    role: "admin",
-    password: "demo1234",
-  },
-};
 
 const ROLE_DASHBOARD: Record<UserRole, string> = {
   citizen: "/dashboard",
@@ -65,8 +28,6 @@ const ROLE_DASHBOARD: Record<UserRole, string> = {
   volunteer: "/volunteer/dashboard",
   admin: "/admin/dashboard",
 };
-
-const STORAGE_KEY = "disaster_auth";
 
 // ─── Context ───────────────────────────────────────────────────────────────────
 
@@ -79,65 +40,147 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Restore session from localStorage on mount
-  useEffect(() => {
+  // Sync Supabase Auth with backend Profile
+  const loadUserProfile = async (accessToken: string) => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as { user: User; token: string };
-        setUser(parsed.user);
-        setToken(parsed.token);
+      setToken(accessToken);
+      const res = await api.get("/auth/me", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      setUser(res.data.data);
+    } catch (error: unknown) {
+      // If profile not found (404), the user exists in Supabase but not MongoDB.
+      // This can happen if email confirmation was required and sync was skipped.
+      // Auto-sync with minimal data so the user can at least log in.
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status === 404) {
+        try {
+          const { data: { user: sbUser } } = await supabase.auth.getUser();
+          if (sbUser) {
+            await api.post(
+              "/auth/sync",
+              {
+                name: sbUser.user_metadata?.name || sbUser.email?.split('@')[0] || 'User',
+                email: sbUser.email,
+                role: sbUser.user_metadata?.role || 'citizen',
+                phone: sbUser.user_metadata?.phone,
+                organizationName: sbUser.user_metadata?.organizationName,
+              },
+              { headers: { Authorization: `Bearer ${accessToken}` } }
+            );
+            const retry = await api.get("/auth/me", {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            });
+            setUser(retry.data.data);
+            return;
+          }
+        } catch (syncErr) {
+          console.error("Auto-sync failed:", syncErr);
+        }
       }
-    } catch {
-      localStorage.removeItem(STORAGE_KEY);
-    } finally {
-      setIsLoading(false);
+      console.error("Failed to load user profile:", error);
+      setUser(null);
+      setToken(null);
     }
-  }, []);
-
-  const persist = (user: User, token: string) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ user, token }));
-    setUser(user);
-    setToken(token);
   };
 
+  useEffect(() => {
+    let mounted = true;
+
+    const init = async () => {
+      setIsLoading(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && mounted) {
+          await loadUserProfile(session.access_token);
+        }
+      } catch (err) {
+        console.error("Auth init error:", err);
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
+
+    init();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return;
+        
+        if (event === "SIGNED_IN" && session) {
+          await loadUserProfile(session.access_token);
+        } else if (event === "SIGNED_OUT") {
+          setUser(null);
+          setToken(null);
+        }
+      }
+    );
+
+    return () => {
+      mounted = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
   // ── Login ──────────────────────────────────────────────────────────────────
-  // TODO: Replace this with a real API call when backend auth is ready:
-  //   const response = await api.post<ApiResponse<{ user: User; token: string }>>("/auth/login", credentials);
-  //   persist(response.data.data.user, response.data.data.token);
-  const login = useCallback(async (credentials: LoginCredentials) => {
-    const demo = DEMO_ACCOUNTS[credentials.email];
-    if (!demo || demo.password !== credentials.password) {
-      throw new Error("Invalid email or password.");
+  const login = useCallback(async (credentials: LoginCredentials): Promise<string> => {
+    const { error, data } = await supabase.auth.signInWithPassword({
+      email: credentials.email,
+      password: credentials.password,
+    });
+    
+    if (error) {
+      throw new Error(error.message);
     }
-    const { password: _pw, ...userWithoutPassword } = demo;
-    void _pw;
-    const mockToken = `mock-jwt-${userWithoutPassword.role}-${Date.now()}`;
-    persist(userWithoutPassword, mockToken);
+    
+    if (data.session) {
+      await loadUserProfile(data.session.access_token);
+      // Read user data from the session/metadata since state may not be updated yet
+      const role = (data.session.user.user_metadata?.role as UserRole) || 'citizen';
+      return ROLE_DASHBOARD[role] || '/dashboard';
+    }
+    return '/dashboard';
   }, []);
 
   // ── Register ───────────────────────────────────────────────────────────────
-  // TODO: Replace with real API call:
-  //   const response = await api.post<ApiResponse<{ user: User; token: string }>>("/auth/register", payload);
-  //   persist(response.data.data.user, response.data.data.token);
-  const register = useCallback(async (payload: RegisterPayload) => {
-    const { password: _pw, ...rest } = payload;
-    void _pw;
-    const newUser: User = {
-      id: `user-${Date.now()}`,
-      name: rest.name,
-      email: rest.email,
-      role: rest.role,
-      phone: rest.phone,
-      organizationName: rest.organizationName,
-    };
-    const mockToken = `mock-jwt-${newUser.role}-${Date.now()}`;
-    persist(newUser, mockToken);
+  // Uses the backend admin API endpoint to create users with email auto-confirmed.
+  // This bypasses Supabase email confirmation completely.
+  const register = useCallback(async (payload: RegisterPayload): Promise<string> => {
+    // Step 1: Create user on backend (uses Supabase admin API — auto confirms email)
+    const regRes = await api.post("/auth/register", {
+      name: payload.name,
+      email: payload.email,
+      password: payload.password,
+      role: payload.role,
+      phone: payload.phone,
+      organizationName: payload.organizationName,
+    });
+
+    if (!regRes.data.success) {
+      throw new Error(regRes.data.message || "Registration failed.");
+    }
+
+    // Step 2: Sign in to get a session token (user is now confirmed)
+    const { error: signInError, data } = await supabase.auth.signInWithPassword({
+      email: payload.email,
+      password: payload.password,
+    });
+
+    if (signInError) {
+      throw new Error(signInError.message);
+    }
+
+    if (data.session) {
+      await loadUserProfile(data.session.access_token);
+    }
+
+    // Return the role-specific dashboard path
+    return ROLE_DASHBOARD[payload.role] || '/dashboard';
   }, []);
 
   // ── Logout ─────────────────────────────────────────────────────────────────
-  const logout = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setToken(null);
   }, []);
