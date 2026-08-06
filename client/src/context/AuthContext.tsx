@@ -47,6 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const res = await api.get("/auth/me", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
+      // Normalise: server returns `_id` from Mongoose; ensure `id` is always a string
       // Normalise: server always sends id, but guard against _id-only responses
       const raw = res.data.data;
       setUser({ ...raw, id: raw.id ?? raw._id });
@@ -75,7 +76,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             const retry = await api.get("/auth/me", {
               headers: { Authorization: `Bearer ${accessToken}` },
             });
-            setUser(retry.data.data);
+            const retryRaw = retry.data.data;
+            setUser({ ...retryRaw, id: retryRaw.id ?? retryRaw._id });
             return;
           }
         } catch (syncErr) {
