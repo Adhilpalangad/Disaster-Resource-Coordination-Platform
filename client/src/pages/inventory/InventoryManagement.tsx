@@ -39,37 +39,21 @@ function expiryStatus(iso?: string): "ok" | "soon" | "expired" | "none" {
   return "ok";
 }
 
-// ── Excel upload zone ─────────────────────────────────────────────────────────
-const UploadZone: React.FC<{ onFile: (f: File) => void; loading: boolean }> = ({ onFile, loading }) => {
-  const [dragging, setDragging] = useState(false);
+// ── Compact upload button ──────────────────────────────────────────────────────
+const UploadButton: React.FC<{ onFile: (f: File) => void; loading: boolean }> = ({ onFile, loading }) => {
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault(); setDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) onFile(file);
-  };
-
   return (
-    <div
-      onDragOver={e => { e.preventDefault(); setDragging(true); }}
-      onDragLeave={() => setDragging(false)}
-      onDrop={handleDrop}
-      onClick={() => inputRef.current?.click()}
-      style={{ border: `2px dashed ${dragging ? "var(--primary)" : "var(--border)"}`, borderRadius: "14px", padding: "40px 24px", textAlign: "center", cursor: loading ? "not-allowed" : "pointer", backgroundColor: dragging ? "rgba(2,132,199,0.04)" : "var(--bg)", transition: "all 0.2s" }}
-    >
+    <>
       <input ref={inputRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: "none" }} disabled={loading}
         onChange={e => { const f = e.target.files?.[0]; if (f) { onFile(f); e.target.value = ""; } }} />
-      <div style={{ width: "48px", height: "48px", borderRadius: "12px", backgroundColor: "rgba(2,132,199,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
-        {loading ? <RefreshCw size={22} color="var(--primary)" style={{ animation: "spin 1s linear infinite" }} /> : <FileSpreadsheet size={22} color="var(--primary)" />}
-      </div>
-      <p style={{ margin: "0 0 5px", fontSize: "15px", fontWeight: 700, color: "var(--text-h)" }}>
-        {loading ? "Parsing file…" : "Drop Excel / CSV here or click to browse"}
-      </p>
-      <p style={{ margin: 0, fontSize: "13px", color: "var(--secondary)" }}>
-        Supports <strong>.xlsx</strong>, <strong>.xls</strong>, <strong>.csv</strong> — max 5 MB
-      </p>
-    </div>
+      <button onClick={() => inputRef.current?.click()} disabled={loading}
+        style={{ display: "inline-flex", alignItems: "center", gap: "7px", padding: "9px 16px", borderRadius: "9px", border: "1px solid var(--border)", backgroundColor: "var(--card-bg)", color: loading ? "var(--secondary)" : "var(--text-h)", fontWeight: 600, fontSize: "13px", cursor: loading ? "not-allowed" : "pointer" }}>
+        {loading
+          ? <RefreshCw size={14} color="var(--primary)" style={{ animation: "spin 1s linear infinite" }} />
+          : <FileSpreadsheet size={14} color="var(--primary)" />}
+        {loading ? "Parsing…" : "Upload Excel / CSV"}
+      </button>
+    </>
   );
 };
 
@@ -534,12 +518,7 @@ export const InventoryManagement: React.FC = () => {
         title="Inventory Management"
         description="Upload an Excel sheet to bulk-update your stockpile. Review and edit before saving."
         breadcrumbs={[{ label: "NGO Dashboard", path: "/ngo/dashboard" }, { label: "Inventory" }]}
-        actions={
-          <button onClick={() => inventoryApi.downloadTemplate()}
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 16px", borderRadius: "9px", border: "1px solid var(--border)", backgroundColor: "var(--card-bg)", color: "var(--text-h)", fontWeight: 600, fontSize: "13px", cursor: "pointer" }}>
-            <Download size={14} /> Download Template
-          </button>
-        }
+        actions={undefined}
       />
 
       {/* Flash messages */}
@@ -567,16 +546,17 @@ export const InventoryManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Upload zone */}
-      <div style={{ marginBottom: "24px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
-          <Upload size={15} color="var(--primary)" />
-          <h3 style={{ margin: 0, fontSize: "14px", fontWeight: 700, color: "var(--text-h)" }}>Upload Inventory Sheet</h3>
-        </div>
-        <UploadZone onFile={handleFile} loading={parsing} />
-        <p style={{ margin: "8px 0 0", fontSize: "12px", color: "var(--secondary)" }}>
-          Don't have a template? <button onClick={() => inventoryApi.downloadTemplate()} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--primary)", fontSize: "12px", fontWeight: 600, padding: 0, textDecoration: "underline" }}>Download the sample Excel file</button> and fill it in.
-        </p>
+      {/* Compact upload row */}
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "24px", padding: "12px 16px", borderRadius: "10px", backgroundColor: "var(--card-bg)", border: "1px solid var(--border)", flexWrap: "wrap" }}>
+        <Upload size={14} color="var(--primary)" />
+        <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-h)" }}>Bulk import via spreadsheet</span>
+        <UploadButton onFile={handleFile} loading={parsing} />
+        <span style={{ fontSize: "12px", color: "var(--secondary)" }}>or</span>
+        <button onClick={() => inventoryApi.downloadTemplate()}
+          style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "9px 14px", borderRadius: "9px", border: "1px solid var(--border)", backgroundColor: "transparent", color: "var(--primary)", fontWeight: 600, fontSize: "13px", cursor: "pointer" }}>
+          <Download size={13} /> Download Template
+        </button>
+        <span style={{ fontSize: "11px", color: "var(--secondary)", marginLeft: "auto" }}>.xlsx · .xls · .csv · max 5 MB</span>
       </div>
 
       {/* Current inventory */}

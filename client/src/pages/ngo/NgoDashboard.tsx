@@ -37,20 +37,33 @@ export const NgoDashboard: React.FC = () => {
   const [ngoProfile,       setNgoProfile]       = useState<NGOProfileData | null>(null);
   const [loading,          setLoading]          = useState(true);
   const [accepting,        setAccepting]        = useState<string | null>(null);
+  const [noProfile,        setNoProfile]        = useState(false);
 
   const fetchData = useCallback(async () => {
+    if (!user) return;
     setLoading(true);
+    setNoProfile(false);
     try {
+      // Step 1: resolve this NGO's MongoDB profile _id (used as assignedNGO on requests)
+      let profile: NGOProfileData | null = null;
+      try {
+        profile = await ngoApi.getMyProfile(user.id);
+        setNgoProfile(profile);
+      } catch {
+        // No profile yet — prompt user to complete setup
+        setNoProfile(true);
+        setAssignedRequests([]);
+        setAllRequests([]);
+        return;
+      }
+
+      // Step 2: fetch only THIS NGO's requests using profile._id
       const [assigned, all] = await Promise.all([
-        requestsApi.getAll({ status: "ngo_assigned" }),
-        requestsApi.getAll(),
+        requestsApi.getAll({ assignedNGO: profile._id, status: "ngo_assigned" }),
+        requestsApi.getAll({ assignedNGO: profile._id }),
       ]);
       setAssignedRequests(assigned);
       setAllRequests(all);
-
-      if (user) {
-        ngoApi.getMyProfile(user.id).then(setNgoProfile).catch(() => null);
-      }
     } catch {
       // fail gracefully
     } finally {
@@ -85,6 +98,20 @@ export const NgoDashboard: React.FC = () => {
 
   return (
     <PageContainer>
+      {/* No profile yet — prompt to complete setup */}
+      {!loading && noProfile && (
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "14px 18px", borderRadius: "12px", backgroundColor: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.3)", marginBottom: "20px" }}>
+          <AlertTriangle size={16} style={{ color: "var(--warning)", flexShrink: 0 }} />
+          <div>
+            <p style={{ margin: "0 0 2px", fontSize: "14px", fontWeight: 700, color: "var(--text-h)" }}>Complete your NGO profile</p>
+            <p style={{ margin: 0, fontSize: "13px", color: "var(--secondary)" }}>Your profile isn't set up yet. The routing system needs your service areas before requests can be assigned to you.</p>
+          </div>
+          <Link to="/ngo/profile" style={{ marginLeft: "auto", padding: "8px 16px", borderRadius: "8px", backgroundColor: "var(--warning)", color: "#fff", fontWeight: 700, fontSize: "13px", textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>
+            Set Up Profile
+          </Link>
+        </div>
+      )}
+
       {/* Awaiting acceptance banner */}
       {!loading && awaitingCount > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 16px", borderRadius: "10px", backgroundColor: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)", marginBottom: "24px" }}>
@@ -99,8 +126,8 @@ export const NgoDashboard: React.FC = () => {
       )}
 
       <PageHeader
-        title="NGO Operations Console"
-        description={`${ngoProfile ? ngoProfile.orgName : (user?.organizationName ?? "Your Organisation")} — manage incoming requests and coordinate deliveries.`}
+        title={ngoProfile ? ngoProfile.orgName : (user?.organizationName ?? "NGO Dashboard")}
+        description="Your assigned requests and deliveries — only your organisation's data."
         actions={
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
             <button onClick={fetchData} disabled={loading} title="Refresh"
@@ -192,10 +219,10 @@ export const NgoDashboard: React.FC = () => {
         </Card>
 
         {/* Profile & operations */}
-        <Card title="Operations Summary">
+        <Card title="My Organisation Summary">
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {[
-              { label: "Total Requests Received", value: loading ? "—" : String(allRequests.length),    color: "var(--primary)" },
+              { label: "Total Assigned to Us", value: loading ? "—" : String(allRequests.length),    color: "var(--primary)" },
               { label: "Awaiting Acceptance",      value: loading ? "—" : String(awaitingCount),         color: "var(--danger)"  },
               { label: "Active Cases",             value: loading ? "—" : String(activeCount),           color: "#7c3aed"        },
               { label: "Completed",                value: loading ? "—" : String(completedCount),        color: "var(--success)" },

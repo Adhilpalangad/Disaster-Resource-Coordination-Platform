@@ -129,7 +129,10 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
        res.status(404).json({ success: false, message: 'User profile not found in database' });
        return;
     }
-    res.status(200).json({ success: true, data: req.user });
+    // Explicitly include id = _id.toString() so clients can always rely on user.id
+    const doc = req.user.toJSON ? req.user.toJSON() : req.user;
+    const id  = (req.user._id as { toString(): string }).toString();
+    res.status(200).json({ success: true, data: { ...doc, id } });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Internal server error', error: String(error) });
   }

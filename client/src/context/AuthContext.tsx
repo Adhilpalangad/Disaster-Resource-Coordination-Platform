@@ -47,7 +47,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const res = await api.get("/auth/me", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      setUser(res.data.data);
+      // Normalise: server always sends id, but guard against _id-only responses
+      const raw = res.data.data;
+      setUser({ ...raw, id: raw.id ?? raw._id });
     } catch (error: unknown) {
       // If profile not found (404), the user exists in Supabase but not MongoDB.
       // This can happen if email confirmation was required and sync was skipped.

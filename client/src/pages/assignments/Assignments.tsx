@@ -241,13 +241,13 @@ export const Assignments: React.FC = () => {
           const profile = await ngoApi.getMyProfile(user.id);
           ngoProfileId = profile._id;
         } catch {
-          // Profile not found — fall back to fetching all (demo mode)
+          // No profile yet — ngoProfileId stays undefined, query returns nothing
         }
       }
 
-      // Step 2: fetch all requests, filtered by NGO if we have an _id
+      // Step 2: fetch only THIS NGO's requests — never fall back to all
       const all = await requestsApi.getAll(
-        ngoProfileId ? { assignedNGO: ngoProfileId } : {}
+        ngoProfileId ? { assignedNGO: ngoProfileId } : { assignedNGO: "__none__" }
       );
 
       // Step 3: keep only requests that have a volunteer involved
