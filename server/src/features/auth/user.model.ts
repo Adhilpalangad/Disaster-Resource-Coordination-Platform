@@ -7,6 +7,8 @@ export interface IUser extends Document {
   role: "citizen" | "ngo" | "volunteer" | "admin";
   phone?: string;
   organizationName?: string;
+  district?: string;
+  profession?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,6 +25,8 @@ const UserSchema = new Schema<IUser>(
     },
     phone: { type: String },
     organizationName: { type: String },
+    district: { type: String },
+    profession: { type: String },
   },
   { timestamps: true }
 );

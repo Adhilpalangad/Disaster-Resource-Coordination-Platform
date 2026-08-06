@@ -10,6 +10,8 @@ export interface User {
   avatar?: string;
   phone?: string;
   organizationName?: string;
+  district?: string;
+  profession?: string;
 }
 
 export interface AuthState {
@@ -24,6 +26,7 @@ export interface LoginCredentials { email: string; password: string; }
 export interface RegisterPayload {
   name: string; email: string; password: string; role: UserRole;
   phone?: string; organizationName?: string;
+  district?: string; profession?: string;
 }
 
 // ─── Disaster ─────────────────────────────────────────────────────────────────

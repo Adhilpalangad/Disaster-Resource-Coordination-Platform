@@ -23,7 +23,7 @@ const getAdminClient = () => {
 // POST /api/auth/register — creates user via admin API (auto email confirm)
 export const registerUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, email, password, role, phone, organizationName } = req.body;
+    const { name, email, password, role, phone, organizationName, district, profession } = req.body;
 
     if (!name || !email || !password || !role) {
       res.status(400).json({ success: false, message: 'name, email, password, and role are required' });
@@ -39,7 +39,7 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
       email,
       password,
       email_confirm: true,
-      user_metadata: { name, role, phone, organizationName },
+      user_metadata: { name, role, phone, organizationName, district, profession },
     });
     console.log(`[${new Date().toISOString()}] Supabase admin.createUser returned`);
 
@@ -61,9 +61,10 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
     if (user) {
       user.name = name; user.email = email; user.role = role;
       user.phone = phone; user.organizationName = organizationName;
+      user.district = district; user.profession = profession;
       await user.save();
     } else {
-      user = await User.create({ supabaseId, name, email, role, phone, organizationName });
+      user = await User.create({ supabaseId, name, email, role, phone, organizationName, district, profession });
     }
     console.log(`[${new Date().toISOString()}] MongoDB upsert finished`);
 
@@ -87,7 +88,7 @@ export const syncUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { name, email, role, phone, organizationName } = req.body;
+    const { name, email, role, phone, organizationName, district, profession } = req.body;
 
     if (!name || !email || !role) {
       res.status(400).json({ success: false, message: 'Name, email, and role are required' });
@@ -103,6 +104,8 @@ export const syncUser = async (req: Request, res: Response): Promise<void> => {
       user.role = role;
       user.phone = phone;
       user.organizationName = organizationName;
+      user.district = district;
+      user.profession = profession;
       await user.save();
     } else {
       // Create new user
@@ -113,6 +116,8 @@ export const syncUser = async (req: Request, res: Response): Promise<void> => {
         role,
         phone,
         organizationName,
+        district,
+        profession,
       });
     }
 
@@ -126,8 +131,8 @@ export const syncUser = async (req: Request, res: Response): Promise<void> => {
 export const getMe = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user) {
-       res.status(404).json({ success: false, message: 'User profile not found in database' });
-       return;
+      res.status(404).json({ success: false, message: 'User profile not found in database' });
+      return;
     }
     res.status(200).json({ success: true, data: req.user });
   } catch (error) {
