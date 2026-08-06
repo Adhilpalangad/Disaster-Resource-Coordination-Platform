@@ -14,6 +14,7 @@ import Contact from "./pages/public/Contact.js";
 import Login from "./pages/public/Login.js";
 import Register from "./pages/public/Register.js";
 import ForgotPassword from "./pages/public/ForgotPassword.js";
+import ResetPassword from "./pages/public/ResetPassword.js";
 import NotFound from "./pages/public/NotFound.js";
 
 // ── Shared Authenticated Pages (all roles) ────────────────────────────────────
@@ -76,6 +77,7 @@ export function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
         </Route>
 
         {/* ── Citizen Routes ─────────────────────────────────────────────── */}

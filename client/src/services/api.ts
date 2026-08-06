@@ -1,4 +1,5 @@
 import axios from "axios";
+import { supabase } from "../lib/supabase.js";
 
 // ─── Axios Instance ────────────────────────────────────────────────────────────
 // Base URL reads from the Vite env variable VITE_API_URL.
@@ -10,21 +11,18 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 10000,
+  timeout: 30000,
 });
 
-// ── Request interceptor — attach JWT from localStorage ─────────────────────────
-api.interceptors.request.use((config) => {
+// ── Request interceptor — attach JWT from Supabase ─────────────────────────
+api.interceptors.request.use(async (config) => {
   try {
-    const stored = localStorage.getItem("disaster_auth");
-    if (stored) {
-      const parsed = JSON.parse(stored) as { token: string };
-      if (parsed.token) {
-        config.headers.Authorization = `Bearer ${parsed.token}`;
-      }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      config.headers.Authorization = `Bearer ${session.access_token}`;
     }
-  } catch {
-    // ignore malformed storage
+  } catch (error) {
+    console.error("Error getting supabase session for request:", error);
   }
   return config;
 });
@@ -32,9 +30,9 @@ api.interceptors.request.use((config) => {
 // ── Response interceptor — handle 401 globally ────────────────────────────────
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
-      localStorage.removeItem("disaster_auth");
+      await supabase.auth.signOut();
       window.location.href = "/login";
     }
     return Promise.reject(error);

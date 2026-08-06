@@ -24,7 +24,13 @@ const inputStyle: React.CSSProperties = {
 };
 
 export const Register: React.FC = () => {
-  const { register, getDashboardPath } = useAuth();
+  const { register } = useAuth();
+
+  const DASHBOARD_BY_ROLE: Record<string, string> = {
+    citizen: "/dashboard",
+    ngo: "/ngo/dashboard",
+    volunteer: "/volunteer/dashboard",
+  };
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
@@ -67,7 +73,7 @@ export const Register: React.FC = () => {
 
     setIsLoading(true);
     try {
-      await register({
+      const dashPath = await register({
         name: form.name,
         email: form.email,
         password: form.password,
@@ -75,7 +81,8 @@ export const Register: React.FC = () => {
         phone: form.phone || undefined,
         organizationName: form.organizationName || undefined,
       });
-      navigate(getDashboardPath(), { replace: true });
+      // Navigate directly using the path returned by register() — role-specific dashboard
+      navigate(dashPath, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed.");
     } finally {
