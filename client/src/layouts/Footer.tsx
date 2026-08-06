@@ -25,7 +25,7 @@ export const Footer: React.FC = () => {
         }}
       >
         <div>
-          © {new Date().getFullYear()} Disaster Resource Coordination Platform. All rights reserved.
+          © {new Date().getFullYear()} Disaster Resource Coordination Platform.
         </div>
         <div style={{ display: "flex", gap: "20px" }}>
           <Link to="/about" style={{ color: "var(--secondary, #475569)", textDecoration: "none" }}>

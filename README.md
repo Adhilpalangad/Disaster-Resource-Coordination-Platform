@@ -1,47 +1,69 @@
 <div align="center">
-  <h1 align="center">Disaster Resource Coordination Platform</h1>
+  <h1 align="center">🛡️ Disaster Resource Coordination Platform</h1>
   <p align="center">
-    A robust, real-time coordination platform designed to streamline disaster response, resource allocation, and communication during critical emergencies.
+    <strong>Fast, Coordinated, Life-Saving Disaster Relief in Real Time.</strong><br>
+    <em>Engineered by Team Sync6 to eliminate communication lag, streamline emergency inventory, and dispatch field aid.</em>
+  </p>
+
+  <p align="center">
+    <a href="#-about-the-product">About The Product</a> •
+    <a href="#-how-it-helps-you">How It Works</a> •
+    <a href="#-key-features">Key Features</a> •
+    <a href="#-technology-stack">Tech Stack</a> •
+    <a href="#-getting-started">Getting Started</a> •
+    <a href="#-team-sync6">Team Sync6</a>
   </p>
 </div>
 
-<details>
-  <summary>Table of Contents</summary>
-  <ol>
-    <li><a href="#about-the-project">About The Project</a></li>
-    <li><a href="#technology-stack">Technology Stack</a></li>
-    <li><a href="#system-architecture">System Architecture</a></li>
-    <li><a href="#getting-started">Getting Started</a>
-      <ul>
-        <li><a href="#prerequisites">Prerequisites</a></li>
-        <li><a href="#installation">Installation</a></li>
-        <li><a href="#environment-variables">Environment Variables</a></li>
-      </ul>
-    </li>
-    <li><a href="#usage">Usage</a></li>
-    <li><a href="#contributing">Contributing</a></li>
-    <li><a href="#license">License</a></li>
-  </ol>
-</details>
+---
 
-## About The Project
+## 🌟 About The Product
 
-The **Disaster Resource Coordination Platform** is a full-stack application engineered to address the complex logistical challenges faced during disaster scenarios. By bridging the gap between those who need resources (individuals, shelters, local agencies) and those who provide them (NGOs, governments, volunteers), this platform guarantees real-time synchronization, secure authentication, and a streamlined approach to crisis management.
+When disaster strikes, delays cost lives. Traditional relief channels often suffer from fragmented phone calls, unverified social media posts, lost paper logs, and zero delivery tracking. 
 
-### Key Features
-- **Real-Time Resource Tracking**: Live updates of available and requested resources using Supabase Realtime and WebSockets.
-- **Secure Authentication & Roles**: Robust JWT and Supabase-backed authentication with multi-level role-based access control (RBAC).
-- **Interactive Dashboards**: Clean, responsive, and intuitive interfaces tailored for different user roles (Admins, Responders, Citizens).
-- **Robust API & Data Handling**: Express backend coupled with MongoDB for scalable data modeling and high-availability operations.
+The **Disaster Resource Coordination Platform** bridges this critical gap. It is a full-stack, real-time emergency ecosystem that connects **citizens in distress**, **accredited NGOs**, **field volunteers**, and **disaster operators** into one unified, synchronized hub.
 
 ---
 
-## Technology Stack
+## 💡 How It Helps You (By User Role)
+
+### 🆘 1. For Citizens & Families
+- **Instant Geotagged Aid Requests:** Submit requests for food, clean water, medical supplies, or shelter with exact GPS location and photos.
+- **Live Status Tracking:** Track your request stage-by-stage (*Pending* ➔ *Verified* ➔ *Assigned* ➔ *Delivered*).
+- **Emergency Shelter Locator:** Find active shelters near you with live bed capacity, food availability, and emergency contacts.
+
+### 🏢 2. For Relief NGOs & Organizations
+- **Verification Engine:** Review and verify incoming citizen distress calls to eliminate duplicates and prioritize critical cases.
+- **Live Stock & Inventory Tracker:** Monitor food packs, medical kits, and blankets in real time to prevent shortages.
+- **Volunteer Mission Dispatch:** Assign relief delivery orders directly to nearby field volunteers.
+
+### 🙋 3. For Field Volunteers & Responders
+- **Instant Mission Dispatch:** Receive clear delivery tasks complete with items list, recipient details, and exact coordinates.
+- **Turn-by-Turn Guidance:** Navigate straight to affected families without getting lost in disaster-affected areas.
+- **One-Tap Delivery Confirmation:** Mark tasks delivered from the field to keep the entire network updated.
+
+### 🛡️ 4. For Disaster Operators & Admins
+- **Campaign Management:** Declare active disaster events with custom severity levels and emergency zones.
+- **NGO Accreditation:** Verify relief organizations to maintain platform trust and data integrity.
+- **Real-Time Analytics:** Monitor emergency metrics, request distribution, and active volunteers.
+
+---
+
+## 🔥 Key Features At A Glance
+
+- ⚡ **Real-Time Supabase & WebSocket Sync:** Instant status updates across all connected devices.
+- 📍 **GPS Geotagging & Mapping:** Pinpoint exact rescue locations and nearby relief shelters.
+- 📦 **Transparent Inventory Control:** Real-time warehouse supply tracking to ensure supplies reach where they're needed most.
+- 🛡️ **Role-Based Access Control (RBAC):** Secure, dedicated dashboards for Citizens, NGOs, Volunteers, and Admins.
+
+---
+
+## ⚙️ Technology Stack
 
 ### Frontend (Client)
 - **Framework:** [React 19](https://reactjs.org/) + [Vite](https://vitejs.dev/)
 - **Routing:** React Router v7
-- **Styling & UI:** Modern CSS/Tailwind (Lucide React for icons)
+- **Styling:** Custom CSS Design Tokens & Lucide React Iconography
 - **Data & API:** Axios, Supabase Client
 
 ### Backend (Server)
@@ -49,115 +71,44 @@ The **Disaster Resource Coordination Platform** is a full-stack application engi
 - **Framework:** [Express.js](https://expressjs.com/)
 - **Database:** [MongoDB](https://www.mongodb.com/) (Mongoose ODM)
 - **Auth & Real-time:** [Supabase](https://supabase.com/), WebSockets (`ws`)
-- **Security:** Helmet, CORS, JSONWebToken
-- **Utilities:** Nodemailer, Multer, XLSX
 
 ---
 
-## System Architecture
+## 🚀 Getting Started
 
-```mermaid
-graph TD;
-    Client[React/Vite Frontend] -->|HTTPS/REST| Server[Express.js Backend];
-    Client -->|WebSockets| Realtime[Supabase Realtime];
-    Server -->|Mongoose| MongoDB[(MongoDB)];
-    Server -->|Auth & Admin API| Supabase[(Supabase)];
+### 1. Clone the repository
+```sh
+git clone https://github.com/Adhilpalangad/Disaster-Resource-Coordination-Platform.git
+cd Disaster-Resource-Coordination-Platform
+```
+
+### 2. Install Client Dependencies
+```sh
+cd client
+npm install
+```
+
+### 3. Install Server Dependencies
+```sh
+cd ../server
+npm install
+```
+
+### 4. Run Development Servers
+```sh
+# Start Backend (from /server)
+npm run dev
+
+# Start Frontend (from /client)
+npm run dev
 ```
 
 ---
 
-## Getting Started
+## 🎓 Developed by Team Sync6
 
-Follow these instructions to get a copy of the project up and running on your local machine for development and testing purposes.
-
-### Prerequisites
-
-Ensure you have the following installed:
-- [Node.js](https://nodejs.org/) (v20 or higher recommended)
-- [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/)
-- A running [MongoDB](https://www.mongodb.com/) cluster/instance
-- A [Supabase](https://supabase.com/) project
-
-### Installation
-
-1. **Clone the repository**
-   ```sh
-   git clone https://github.com/Adhilpalangad/Disaster-Resource-Coordination-Platform.git
-   cd Disaster-Resource-Coordination-Platform
-   ```
-
-2. **Install Client Dependencies**
-   ```sh
-   cd client
-   npm install
-   ```
-
-3. **Install Server Dependencies**
-   ```sh
-   cd ../server
-   npm install
-   ```
-
-### Environment Variables
-
-You need to create a `.env` file in both the `client` and `server` directories.
-
-**Client `.env` example:**
-```env
-VITE_API_BASE_URL=http://localhost:5000/api
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-**Server `.env` example:**
-```env
-PORT=5000
-MONGODB_URI=your_mongodb_connection_string
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-JWT_SECRET=your_jwt_secret
-```
+This platform was designed, engineered, and developed by **Team Sync6**—a group of dedicated student developers committed to building modern, open-source technology for social good and emergency relief operations.
 
 ---
 
-## Usage
-
-To run the application locally in development mode:
-
-1. **Start the backend server:**
-   ```sh
-   cd server
-   npm run dev
-   ```
-
-2. **Start the frontend client:**
-   ```sh
-   cd client
-   npm run dev
-   ```
-
-3. **Access the application:**
-   Open your browser and navigate to `http://localhost:5173`.
-
----
-
-## Contributing
-
-Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
----
-
-## License
-
-Distributed under the MIT License. See `LICENSE` for more information.
-
-<div align="center">
-  <sub>Built with ❤️ for rapid disaster response.</sub>
-</div>
+© 2026 Disaster Resource Coordination Platform. Built with ❤️ by **Team Sync6**.
