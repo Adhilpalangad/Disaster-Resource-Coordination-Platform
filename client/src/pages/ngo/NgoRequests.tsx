@@ -4,7 +4,9 @@ import {
   AlertCircle, Package, Utensils, Droplets, HeartPulse, Home,
   AlertTriangle, Truck, Users, ChevronDown, UserCheck,
 } from "lucide-react";
+import { useAuth }      from "../../context/AuthContext.js";
 import { requestsApi }  from "../../services/requestsApi.js";
+import { ngoApi }       from "../../services/ngoApi.js";
 import type { ReliefRequest, UrgencyLevel, RequestCategory } from "../../types/index.js";
 import PageContainer  from "../../components/PageContainer.js";
 import PageHeader     from "../../components/PageHeader.js";
@@ -187,6 +189,8 @@ const AssignVolunteerModal: React.FC<{
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export const NgoRequests: React.FC = () => {
+  const { user } = useAuth();
+
   const [allRequests,   setAllRequests]   = useState<ReliefRequest[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [error,         setError]         = useState("");
@@ -197,11 +201,27 @@ export const NgoRequests: React.FC = () => {
   const [activeTab,     setActiveTab]     = useState<TabId>("incoming");
 
   const fetchRequests = useCallback(async () => {
+    if (!user) return;
     setLoading(true); setError("");
-    try { setAllRequests(await requestsApi.getAll()); }
-    catch { setError("Could not load requests. Make sure the server is running."); }
-    finally { setLoading(false); }
-  }, []);
+    try {
+      // Get this NGO's MongoDB profile _id, then filter requests to only ours
+      let ngoProfileId: string | undefined;
+      try {
+        const profile = await ngoApi.getMyProfile(user.id);
+        ngoProfileId = profile._id;
+      } catch {
+        // No profile yet — show empty state, not everyone else's requests
+      }
+      const requests = await requestsApi.getAll(
+        ngoProfileId ? { assignedNGO: ngoProfileId } : { assignedNGO: "__none__" }
+      );
+      setAllRequests(requests);
+    } catch {
+      setError("Could not load requests. Make sure the server is running.");
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => { fetchRequests(); }, [fetchRequests]);
 
@@ -324,7 +344,11 @@ export const NgoRequests: React.FC = () => {
         <EmptyState
           icon={<CheckCircle size={32} />}
           title={`No ${TABS.find(t => t.id === activeTab)?.label.toLowerCase()} requests`}
-          description={activeTab === "incoming" ? "New requests routed to you will appear here." : "Nothing here right now."}
+          description={
+            activeTab === "incoming"
+              ? "No requests are currently routed to your NGO. Make sure your service areas are set up in your profile."
+              : "Nothing here right now."
+          }
         />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>

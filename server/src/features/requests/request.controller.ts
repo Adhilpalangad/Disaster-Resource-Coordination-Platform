@@ -121,16 +121,28 @@ export const createRequest = async (req: Request, res: Response): Promise<void> 
 // ── List (with filters) ────────────────────────────────────────────────────────
 export const getAllRequests = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { createdBy, status, urgency, category, districtId, assignedNGO, assignedVolunteer } = req.query;
+    const { status, urgency, category, districtId, assignedNGO, assignedVolunteer } = req.query;
     const filter: Record<string, unknown> = {};
 
-    if (createdBy)         filter.createdBy          = createdBy;
-    if (status)            filter.status              = status;
-    if (urgency)           filter.urgency             = urgency;
-    if (category)          filter.category            = category;
-    if (districtId)        filter["location.districtId"] = districtId;
-    if (assignedNGO)       filter.assignedNGO         = assignedNGO;
-    if (assignedVolunteer) filter.assignedVolunteer   = assignedVolunteer;
+    // ── Role-based scoping (server-enforced, client cannot bypass) ────────────
+    if (req.user?.role === "citizen") {
+      // Citizens always see only their own requests — ignore any client-supplied createdBy
+      filter.createdBy = (req.user._id as { toString(): string }).toString();
+    } else if (req.user?.role === "volunteer") {
+      // Volunteers see only requests assigned to them
+      if (assignedVolunteer) filter.assignedVolunteer = assignedVolunteer;
+    } else {
+      // NGO / admin / unauthenticated: honour all query filters
+      const { createdBy } = req.query;
+      if (createdBy)         filter.createdBy          = createdBy;
+      if (assignedNGO)       filter.assignedNGO         = assignedNGO;
+      if (assignedVolunteer) filter.assignedVolunteer   = assignedVolunteer;
+    }
+
+    if (status)     filter.status                  = status;
+    if (urgency)    filter.urgency                 = urgency;
+    if (category)   filter.category                = category;
+    if (districtId) filter["location.districtId"]  = districtId;
 
     const requests = await ReliefRequest.find(filter).sort({ createdAt: -1 });
 
