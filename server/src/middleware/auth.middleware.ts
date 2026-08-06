@@ -1,6 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
 import { createClient } from '@supabase/supabase-js';
-import { WebSocket } from 'ws';
 import { User } from '../features/auth/user.model.js';
 import type { IUser } from '../features/auth/user.model.js';
 
@@ -26,9 +25,6 @@ const getSupabaseClient = () => {
     }
     supabase = createClient(supabaseUrl, supabaseKey, {
       auth: { persistSession: false, autoRefreshToken: false },
-      global: { headers: {} },
-      // @ts-expect-error: provide ws for Node.js < 22 which lacks native WebSocket
-      realtime: { transport: WebSocket },
     });
   }
   return supabase;

@@ -47,7 +47,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const res = await api.get("/auth/me", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      setUser(res.data.data);
+      // Normalise: server returns `_id` from Mongoose; ensure `id` is always a string
+      const raw = res.data.data;
+      setUser({ ...raw, id: raw.id ?? raw._id });
     } catch (error: unknown) {
       // If profile not found (404), the user exists in Supabase but not MongoDB.
       // This can happen if email confirmation was required and sync was skipped.
@@ -73,7 +75,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             const retry = await api.get("/auth/me", {
               headers: { Authorization: `Bearer ${accessToken}` },
             });
-            setUser(retry.data.data);
+            const retryRaw = retry.data.data;
+            setUser({ ...retryRaw, id: retryRaw.id ?? retryRaw._id });
             return;
           }
         } catch (syncErr) {

@@ -128,13 +128,54 @@ export const syncUser = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+export const updateProfile = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+    const { name, phone, organizationName, district, profession } = req.body;
+
+    if (!name?.trim()) {
+      res.status(400).json({ success: false, message: 'Name is required' });
+      return;
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        name:             name.trim(),
+        phone:            phone?.trim()            || undefined,
+        organizationName: organizationName?.trim() || undefined,
+        district:         district?.trim()         || undefined,
+        profession:       profession?.trim()        || undefined,
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
+    }
+
+    const doc = user.toJSON ? user.toJSON() : user;
+    const id  = (user._id as { toString(): string }).toString();
+    res.json({ success: true, message: 'Profile updated', data: { ...doc, id } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Update failed', error: String(error) });
+  }
+};
+
 export const getMe = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user) {
       res.status(404).json({ success: false, message: 'User profile not found in database' });
       return;
     }
-    res.status(200).json({ success: true, data: req.user });
+    // Always include `id` (string) so the client never has to deal with _id only
+    const doc = req.user.toJSON ? req.user.toJSON() : { ...req.user };
+    const id  = (req.user._id as { toString(): string }).toString();
+    res.status(200).json({ success: true, data: { ...doc, id } });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Internal server error', error: String(error) });
   }
