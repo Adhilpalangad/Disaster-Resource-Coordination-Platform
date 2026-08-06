@@ -159,10 +159,21 @@ export const getRequestById = async (req: Request, res: Response): Promise<void>
 
 export const ngoAcceptRequest = async (req: Request, res: Response): Promise<void> => {
   try {
+    // Stamp respondedAt on the last routingHistory entry using arrayFilters
+    const request = await ReliefRequest.findById(req.params.id).lean();
+    const lastEntry = request?.routingHistory?.at(-1);
+
     const updated = await ReliefRequest.findByIdAndUpdate(
       req.params.id,
-      { status: "ngo_accepted", ngoAcceptedAt: new Date(),
-        $set: { "routingHistory.$[last].respondedAt": new Date(), "routingHistory.$[last].response": "accepted" },
+      {
+        status:        "ngo_accepted",
+        ngoAcceptedAt: new Date(),
+        ...(lastEntry && {
+          $set: {
+            [`routingHistory.${(request!.routingHistory!.length - 1)}.respondedAt`]: new Date(),
+            [`routingHistory.${(request!.routingHistory!.length - 1)}.response`]:    "accepted",
+          },
+        }),
       },
       { new: true }
     );

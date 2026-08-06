@@ -23,6 +23,7 @@
     "multer": "^2.2.0",
     "nodemailer": "^9.0.4",
     "ws": "^8.21.2"
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
