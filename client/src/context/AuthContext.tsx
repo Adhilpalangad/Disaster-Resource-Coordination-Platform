@@ -48,6 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       // Normalise: server returns `_id` from Mongoose; ensure `id` is always a string
+      // Normalise: server always sends id, but guard against _id-only responses
       const raw = res.data.data;
       setUser({ ...raw, id: raw.id ?? raw._id });
     } catch (error: unknown) {

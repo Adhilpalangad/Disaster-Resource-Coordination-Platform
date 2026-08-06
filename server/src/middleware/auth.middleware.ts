@@ -13,7 +13,7 @@ declare global {
   }
 }
 
-// Initialize Supabase admin client for token verification
+// Initialize Supabase client for token verification (Node v22+ has native WebSocket)
 let supabase: ReturnType<typeof createClient> | null = null;
 
 const getSupabaseClient = () => {

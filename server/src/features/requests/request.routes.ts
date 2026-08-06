@@ -8,6 +8,7 @@ import {
   verifyRequest, rejectRequest, ngoAcceptRequest, reserveResources, assignVolunteer,
   markInTransit, markDelivered, confirmDelivery,
 } from "./request.controller.js";
+import { requireAuth } from "../../middleware/auth.middleware.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -40,7 +41,7 @@ const router = Router();
 
 // CRUD
 router.post("/",    upload.single("image"), createRequest);
-router.get("/",     getAllRequests);
+router.get("/",     requireAuth, getAllRequests);
 router.get("/:id",  getRequestById);
 router.put("/:id",  updateRequest);
 router.delete("/:id", deleteRequest);
