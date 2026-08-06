@@ -1,11 +1,11 @@
 import type { Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
-import { WebSocket } from 'ws';
 import { User } from './user.model.js';
 
 let adminClientInstance: any = null;
 
-// Admin client for user creation (bypasses email confirmation)
+// Admin client for user creation (bypasses email confirmation).
+// Node.js v22+ has native WebSocket, so no 'ws' package needed.
 const getAdminClient = () => {
   if (adminClientInstance) return adminClientInstance;
 
@@ -16,9 +16,6 @@ const getAdminClient = () => {
   }
   adminClientInstance = createClient(url, key, {
     auth: { autoRefreshToken: false, persistSession: false },
-    global: { headers: {} },
-    // @ts-expect-error: provide ws for Node.js < 22 which lacks native WebSocket
-    realtime: { transport: WebSocket },
   });
   return adminClientInstance;
 };

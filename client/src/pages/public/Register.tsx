@@ -1,269 +1,230 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { AlertCircle, ShieldCheck, Home, Building2, HandHelping } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.js";
-import PageContainer from "../../components/PageContainer.js";
-import Card from "../../components/Card.js";
 import type { UserRole } from "../../types/index.js";
 
-const ROLE_OPTIONS: { value: UserRole; label: string; description: string }[] = [
-  { value: "citizen", label: "Citizen / Victim", description: "Submit relief requests and track assistance" },
-  { value: "ngo", label: "NGO Representative", description: "Verify requests and coordinate relief operations" },
-  { value: "volunteer", label: "Volunteer", description: "Accept tasks and deliver aid to those in need" },
+// ── Role tiles ────────────────────────────────────────────────────────────────
+const ROLES: { value: UserRole; label: string; Icon: React.ElementType; hint: string }[] = [
+  { value: "citizen",   label: "Citizen",   Icon: Home,        hint: "Request relief" },
+  { value: "ngo",       label: "NGO",       Icon: Building2,   hint: "Coordinate aid" },
+  { value: "volunteer", label: "Volunteer", Icon: HandHelping,  hint: "Deliver aid" },
 ];
 
-const inputStyle: React.CSSProperties = {
+const inp: React.CSSProperties = {
   width: "100%",
-  padding: "10px 12px",
+  padding: "11px 14px",
   borderRadius: "10px",
-  border: "1px solid var(--border, #E2E8F0)",
-  fontSize: "14px",
+  border: "1px solid var(--border)",
+  fontSize: "15px",
   outline: "none",
   boxSizing: "border-box",
   color: "var(--text-h)",
-  backgroundColor: "var(--card-bg, #fff)",
+  backgroundColor: "var(--card-bg)",
 };
 
 export const Register: React.FC = () => {
   const { register } = useAuth();
+  const navigate     = useNavigate();
 
-  const DASHBOARD_BY_ROLE: Record<string, string> = {
-    citizen: "/dashboard",
-    ngo: "/ngo/dashboard",
-    volunteer: "/volunteer/dashboard",
-  };
-  const navigate = useNavigate();
-
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    role: "citizen" as UserRole,
-    phone: "",
-    organizationName: "",
-  });
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  const update = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-    setError("");
-  };
+  const [role,    setRole]    = useState<UserRole>("citizen");
+  const [name,    setName]    = useState("");
+  const [email,   setEmail]   = useState("");
+  const [orgName, setOrgName] = useState("");
+  const [phone,   setPhone]   = useState("");
+  const [pass,    setPass]    = useState("");
+  const [error,   setError]   = useState("");
+  const [busy,    setBusy]    = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    if (!form.name || !form.email || !form.password) {
-      setError("Please fill in all required fields.");
-      return;
-    }
-    if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-    if (form.password.length < 6) {
-      setError("Password must be at least 6 characters.");
-      return;
-    }
-    if (form.role === "ngo" && !form.organizationName) {
+    if (!name.trim())  { setError("Please enter your full name.");            return; }
+    if (!email.trim()) { setError("Please enter your email.");                return; }
+    if (!pass)         { setError("Please create a password.");               return; }
+    if (pass.length < 6) { setError("Password must be at least 6 characters."); return; }
+    if (role === "ngo" && !orgName.trim()) {
       setError("Organization name is required for NGO accounts.");
       return;
     }
 
-    setIsLoading(true);
+    setBusy(true);
     try {
       const dashPath = await register({
-        name: form.name,
-        email: form.email,
-        password: form.password,
-        role: form.role,
-        phone: form.phone || undefined,
-        organizationName: form.organizationName || undefined,
+        name:    name.trim(),
+        email:   email.trim(),
+        password: pass,
+        role,
+        phone:             phone.trim()   || undefined,
+        organizationName:  orgName.trim() || undefined,
       });
-      // Navigate directly using the path returned by register() — role-specific dashboard
+      // register() signs the user in and returns the role-specific path
       navigate(dashPath, { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed.");
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.toLowerCase().includes("already exists") || msg.toLowerCase().includes("already registered") || msg.includes("409")) {
+        setError("An account with this email already exists. Please sign in instead.");
+      } else {
+        setError(msg || "Registration failed. Please try again.");
+      }
     } finally {
-      setIsLoading(false);
+      setBusy(false);
     }
   };
 
   return (
-    <PageContainer maxWidth="480px">
-      <div style={{ marginTop: "40px", marginBottom: "40px" }}>
-        <Card title="Create an Account" subtitle="Join the disaster coordination platform">
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "8px" }}>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px", backgroundColor: "var(--bg)" }}>
+      <div style={{ width: "100%", maxWidth: "420px" }}>
 
-            {/* Role Selector */}
+        {/* Logo */}
+        <div style={{ textAlign: "center", marginBottom: "24px" }}>
+          <div style={{ width: "52px", height: "52px", borderRadius: "14px", backgroundColor: "var(--primary)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: "12px" }}>
+            <ShieldCheck size={26} color="#fff" />
+          </div>
+          <h1 style={{ margin: "0 0 4px", fontSize: "22px", fontWeight: 800, color: "var(--text-h)" }}>Create account</h1>
+          <p style={{ margin: 0, fontSize: "14px", color: "var(--secondary)" }}>Join the disaster relief network</p>
+        </div>
+
+        {/* Card */}
+        <div style={{ backgroundColor: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "16px", padding: "28px", boxShadow: "var(--shadow)" }}>
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+
+            {/* ── Role tiles ── */}
             <div>
-              <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "8px", color: "var(--text-h)" }}>
-                I am joining as <span style={{ color: "var(--danger)" }}>*</span>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "10px", color: "var(--text-h)" }}>
+                I am joining as
               </label>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                {ROLE_OPTIONS.map((opt) => (
-                  <label
-                    key={opt.value}
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: "12px",
-                      padding: "12px",
-                      borderRadius: "10px",
-                      border: `1px solid ${form.role === opt.value ? "var(--primary, #0284C7)" : "var(--border, #E2E8F0)"}`,
-                      backgroundColor: form.role === opt.value ? "rgba(2, 132, 199, 0.05)" : "transparent",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      name="role"
-                      value={opt.value}
-                      checked={form.role === opt.value}
-                      onChange={() => update("role", opt.value)}
-                      style={{ marginTop: "2px", accentColor: "var(--primary, #0284C7)" }}
-                    />
-                    <div>
-                      <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-h)" }}>{opt.label}</div>
-                      <div style={{ fontSize: "12px", color: "var(--secondary)", marginTop: "2px" }}>{opt.description}</div>
-                    </div>
-                  </label>
-                ))}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+                {ROLES.map(({ value, label, Icon, hint }) => {
+                  const active = role === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => { setRole(value); setError(""); }}
+                      style={{
+                        display: "flex", flexDirection: "column", alignItems: "center", gap: "6px",
+                        padding: "12px 8px",
+                        borderRadius: "10px",
+                        border: `2px solid ${active ? "var(--primary)" : "var(--border)"}`,
+                        backgroundColor: active ? "rgba(2,132,199,0.06)" : "var(--bg)",
+                        cursor: "pointer",
+                        transition: "all 0.14s",
+                      }}
+                    >
+                      <Icon size={20} color={active ? "var(--primary)" : "var(--secondary)"} />
+                      <span style={{ fontSize: "13px", fontWeight: 700, color: active ? "var(--primary)" : "var(--text-h)" }}>{label}</span>
+                      <span style={{ fontSize: "10px", color: "var(--secondary)", lineHeight: 1.2 }}>{hint}</span>
+                    </button>
+                  );
+                })}
               </div>
-              <p style={{ fontSize: "11px", color: "#94A3B8", marginTop: "6px" }}>
-                Administrator accounts are created by the system admin.
-              </p>
             </div>
 
-            <div style={{ borderTop: "1px solid var(--border)", paddingTop: "16px", display: "flex", flexDirection: "column", gap: "16px" }}>
+            {/* ── Fields ── */}
+            <div>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
+                Full Name <span style={{ color: "var(--danger)" }}>*</span>
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={e => { setName(e.target.value); setError(""); }}
+                placeholder="Your full name"
+                autoComplete="name"
+                style={inp}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
+                Email <span style={{ color: "var(--danger)" }}>*</span>
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => { setEmail(e.target.value); setError(""); }}
+                placeholder="you@example.com"
+                autoComplete="email"
+                style={inp}
+              />
+            </div>
+
+            {/* NGO only: org name */}
+            {role === "ngo" && (
               <div>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
-                  Full Name <span style={{ color: "var(--danger)" }}>*</span>
+                  Organization Name <span style={{ color: "var(--danger)" }}>*</span>
                 </label>
                 <input
                   type="text"
-                  value={form.name}
-                  onChange={(e) => update("name", e.target.value)}
-                  placeholder="John Doe"
-                  style={inputStyle}
+                  value={orgName}
+                  onChange={e => { setOrgName(e.target.value); setError(""); }}
+                  placeholder="e.g. Kerala Relief Foundation"
+                  style={inp}
                 />
               </div>
+            )}
 
-              <div>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
-                  Email <span style={{ color: "var(--danger)" }}>*</span>
-                </label>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => update("email", e.target.value)}
-                  placeholder="user@example.com"
-                  autoComplete="email"
-                  style={inputStyle}
-                />
-              </div>
+            <div>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
+                Phone <span style={{ fontSize: "11px", color: "var(--secondary)", fontWeight: 400 }}>(optional)</span>
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                placeholder="+91 98765 43210"
+                autoComplete="tel"
+                style={inp}
+              />
+            </div>
 
-              {form.role === "ngo" && (
-                <div>
-                  <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
-                    Organization Name <span style={{ color: "var(--danger)" }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={form.organizationName}
-                    onChange={(e) => update("organizationName", e.target.value)}
-                    placeholder="e.g. Kerala Relief Foundation"
-                    style={inputStyle}
-                  />
-                </div>
-              )}
-
-              <div>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
-                  Phone Number <span style={{ fontSize: "11px", color: "#94A3B8", fontWeight: 400 }}>(optional)</span>
-                </label>
-                <input
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => update("phone", e.target.value)}
-                  placeholder="+91 98765 43210"
-                  style={inputStyle}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
-                  Password <span style={{ color: "var(--danger)" }}>*</span>
-                </label>
-                <input
-                  type="password"
-                  value={form.password}
-                  onChange={(e) => update("password", e.target.value)}
-                  placeholder="Min. 6 characters"
-                  autoComplete="new-password"
-                  style={inputStyle}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
-                  Confirm Password <span style={{ color: "var(--danger)" }}>*</span>
-                </label>
-                <input
-                  type="password"
-                  value={form.confirmPassword}
-                  onChange={(e) => update("confirmPassword", e.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="new-password"
-                  style={inputStyle}
-                />
-              </div>
+            <div>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
+                Password <span style={{ color: "var(--danger)" }}>*</span>
+              </label>
+              <input
+                type="password"
+                value={pass}
+                onChange={e => { setPass(e.target.value); setError(""); }}
+                placeholder="Min. 6 characters"
+                autoComplete="new-password"
+                style={inp}
+              />
             </div>
 
             {error && (
-              <div style={{
-                padding: "10px 14px",
-                borderRadius: "8px",
-                backgroundColor: "rgba(239, 68, 68, 0.08)",
-                border: "1px solid rgba(239, 68, 68, 0.2)",
-                color: "var(--danger, #EF4444)",
-                fontSize: "13px",
-                fontWeight: 500,
-              }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "8px", padding: "10px 12px", borderRadius: "8px", backgroundColor: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)", color: "var(--danger)", fontSize: "13px" }}>
+                <AlertCircle size={14} style={{ flexShrink: 0, marginTop: "1px" }} />
                 {error}
               </div>
             )}
 
             <button
               type="submit"
-              disabled={isLoading}
-              style={{
-                backgroundColor: isLoading ? "#94A3B8" : "var(--primary, #0284C7)",
-                color: "#FFFFFF",
-                padding: "11px",
-                borderRadius: "10px",
-                fontWeight: 600,
-                border: "none",
-                fontSize: "14px",
-                cursor: isLoading ? "not-allowed" : "pointer",
-                transition: "background-color 0.15s ease",
-              }}
+              disabled={busy}
+              style={{ padding: "12px", borderRadius: "10px", border: "none", backgroundColor: busy ? "var(--secondary)" : "var(--primary)", color: "#fff", fontWeight: 700, fontSize: "15px", cursor: busy ? "not-allowed" : "pointer", transition: "background 0.15s" }}
             >
-              {isLoading ? "Creating Account..." : "Create Account"}
+              {busy ? "Creating account…" : "Create Account"}
             </button>
           </form>
+        </div>
 
-          <div style={{ marginTop: "20px", textAlign: "center", fontSize: "13px", color: "#64748B" }}>
-            Already have an account?{" "}
-            <Link to="/login" style={{ color: "var(--primary, #0284C7)", fontWeight: 600, textDecoration: "none" }}>
-              Log In
-            </Link>
-          </div>
-        </Card>
+        {/* Sign-in link */}
+        <p style={{ textAlign: "center", marginTop: "20px", fontSize: "14px", color: "var(--secondary)" }}>
+          Already have an account?{" "}
+          <Link to="/login" style={{ color: "var(--primary)", fontWeight: 700, textDecoration: "none" }}>
+            Sign in →
+          </Link>
+        </p>
+
+        <p style={{ textAlign: "center", marginTop: "8px", fontSize: "11px", color: "var(--secondary)", opacity: 0.7 }}>
+          Administrator accounts are created by the system admin.
+        </p>
       </div>
-    </PageContainer>
+    </div>
   );
 };
 
