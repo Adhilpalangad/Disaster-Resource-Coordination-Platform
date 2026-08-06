@@ -23,6 +23,17 @@ const inp: React.CSSProperties = {
   backgroundColor: "var(--card-bg)",
 };
 
+const DISTRICTS = [
+  "Alappuzha", "Ernakulam", "Idukki", "Kannur", "Kasaragod", "Kollam", "Kottayam", 
+  "Kozhikode", "Malappuram", "Palakkad", "Pathanamthitta", "Thiruvananthapuram", 
+  "Thrissur", "Wayanad"
+];
+
+const PROFESSIONS = [
+  "Doctor", "Nurse", "Engineer", "Electrician", "Plumber", 
+  "Driver", "Rescue Worker", "General Volunteer", "Other"
+];
+
 export const Register: React.FC = () => {
   const { register } = useAuth();
   const navigate     = useNavigate();
@@ -33,6 +44,9 @@ export const Register: React.FC = () => {
   const [orgName, setOrgName] = useState("");
   const [phone,   setPhone]   = useState("");
   const [pass,    setPass]    = useState("");
+  const [district, setDistrict] = useState("");
+  const [profession, setProfession] = useState("");
+  const [otherProfession, setOtherProfession] = useState("");
   const [error,   setError]   = useState("");
   const [busy,    setBusy]    = useState(false);
 
@@ -48,6 +62,20 @@ export const Register: React.FC = () => {
       setError("Organization name is required for NGO accounts.");
       return;
     }
+    if ((role === "ngo" || role === "volunteer") && !district) {
+      setError("Please select a district.");
+      return;
+    }
+    if (role === "volunteer") {
+      if (!profession) {
+        setError("Please select your profession.");
+        return;
+      }
+      if (profession === "Other" && !otherProfession.trim()) {
+        setError("Please specify your profession.");
+        return;
+      }
+    }
 
     setBusy(true);
     try {
@@ -58,6 +86,8 @@ export const Register: React.FC = () => {
         role,
         phone:             phone.trim()   || undefined,
         organizationName:  orgName.trim() || undefined,
+        district:          district || undefined,
+        profession:        role === "volunteer" ? (profession === "Other" ? otherProfession.trim() : profession) : undefined,
       });
       // register() signs the user in and returns the role-specific path
       navigate(dashPath, { replace: true });
@@ -165,6 +195,60 @@ export const Register: React.FC = () => {
                   style={inp}
                 />
               </div>
+            )}
+
+            {/* NGO & Volunteer: District */}
+            {(role === "ngo" || role === "volunteer") && (
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
+                  District <span style={{ color: "var(--danger)" }}>*</span>
+                </label>
+                <select
+                  value={district}
+                  onChange={e => { setDistrict(e.target.value); setError(""); }}
+                  style={inp}
+                >
+                  <option value="" disabled>Select District</option>
+                  {DISTRICTS.map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Volunteer only: Profession */}
+            {role === "volunteer" && (
+              <>
+                <div>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
+                    Profession / Skills <span style={{ color: "var(--danger)" }}>*</span>
+                  </label>
+                  <select
+                    value={profession}
+                    onChange={e => { setProfession(e.target.value); setError(""); }}
+                    style={inp}
+                  >
+                    <option value="" disabled>Select Profession</option>
+                    {PROFESSIONS.map(p => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                </div>
+                {profession === "Other" && (
+                  <div>
+                    <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
+                      Specify Profession <span style={{ color: "var(--danger)" }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={otherProfession}
+                      onChange={e => { setOtherProfession(e.target.value); setError(""); }}
+                      placeholder="e.g. Carpenter"
+                      style={inp}
+                    />
+                  </div>
+                )}
+              </>
             )}
 
             <div>

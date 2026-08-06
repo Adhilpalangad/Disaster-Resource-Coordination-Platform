@@ -65,6 +65,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
                 role: sbUser.user_metadata?.role || 'citizen',
                 phone: sbUser.user_metadata?.phone,
                 organizationName: sbUser.user_metadata?.organizationName,
+                district: sbUser.user_metadata?.district,
+                profession: sbUser.user_metadata?.profession,
               },
               { headers: { Authorization: `Bearer ${accessToken}` } }
             );
@@ -154,6 +156,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       role: payload.role,
       phone: payload.phone,
       organizationName: payload.organizationName,
+      district: payload.district,
+      profession: payload.profession,
     });
 
     if (!regRes.data.success) {
