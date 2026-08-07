@@ -13,15 +13,55 @@ import notificationRouter from "./features/notifications/notification.routes.js"
 import authRouter         from "./features/auth/auth.routes.js";
 import inventoryRouter    from "./features/inventory/inventory.routes.js";
 
+import mongoSanitize from "express-mongo-sanitize";
+
+import hpp from "hpp";
+
+import { globalLimiter } from "./middleware/rateLimiter.js";
+import { errorHandler } from "./middleware/error.middleware.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.CLIENT_URL || '*',
+  credentials: true,
+}));
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+app.use(globalLimiter);
 app.use(morgan("dev"));
 app.use(express.json());
+app.use((req, res, next) => {
+  if (req.body) mongoSanitize.sanitize(req.body);
+  if (req.query) mongoSanitize.sanitize(req.query);
+  if (req.params) mongoSanitize.sanitize(req.params);
+  if (req.headers) mongoSanitize.sanitize(req.headers);
+  next();
+});
+import { FilterXSS } from "xss";
+const xssFilter = new FilterXSS();
+
+function sanitizeObject(obj: any) {
+  if (!obj || typeof obj !== 'object') return;
+  for (const key in obj) {
+    if (typeof obj[key] === 'string') {
+      obj[key] = xssFilter.process(obj[key]);
+    } else if (typeof obj[key] === 'object') {
+      sanitizeObject(obj[key]);
+    }
+  }
+}
+
+app.use((req, res, next) => {
+  if (req.body) sanitizeObject(req.body);
+  if (req.query) sanitizeObject(req.query);
+  if (req.params) sanitizeObject(req.params);
+  next();
+});
+
+app.use(hpp());
 
 // Serve uploaded images
 app.use("/uploads", express.static(path.join(__dirname, "../../uploads")));
@@ -38,5 +78,7 @@ app.use("/api/inventory",    inventoryRouter);
 app.get("/", (_req, res) => {
   res.json({ success: true, message: "Disaster Platform API v2 — request routing enabled" });
 });
+
+app.use(errorHandler);
 
 export default app;

@@ -27,7 +27,7 @@ export const Footer: React.FC = () => {
         <div>
           © {new Date().getFullYear()} Disaster Resource Coordination Platform. All rights reserved.
         </div>
-        <div style={{ display: "flex", gap: "20px" }}>
+        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
           <Link to="/about" style={{ color: "var(--secondary, #475569)", textDecoration: "none" }}>
             About
           </Link>
@@ -36,6 +36,12 @@ export const Footer: React.FC = () => {
           </Link>
           <Link to="/help" style={{ color: "var(--secondary, #475569)", textDecoration: "none" }}>
             Help Center
+          </Link>
+          <Link to="/privacy" style={{ color: "var(--secondary, #475569)", textDecoration: "none" }}>
+            Privacy Policy
+          </Link>
+          <Link to="/terms" style={{ color: "var(--secondary, #475569)", textDecoration: "none" }}>
+            Terms of Service
           </Link>
         </div>
       </div>
