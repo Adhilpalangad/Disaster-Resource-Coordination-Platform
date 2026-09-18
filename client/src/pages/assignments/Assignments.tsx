@@ -6,7 +6,6 @@ import {
 } from "lucide-react";
 import { useAuth }      from "../../context/AuthContext.js";
 import { requestsApi }  from "../../services/requestsApi.js";
-import { ngoApi }       from "../../services/ngoApi.js";
 import type { ReliefRequest, RequestCategory, UrgencyLevel } from "../../types/index.js";
 import PageContainer from "../../components/PageContainer.js";
 import PageHeader    from "../../components/PageHeader.js";
@@ -232,25 +231,11 @@ export const Assignments: React.FC = () => {
   const [actingId,     setActingId]     = useState<string | null>(null);
 
   const fetchAssignments = useCallback(async () => {
+    if (!user) return;
     setLoading(true); setError("");
     try {
-      // Step 1: get this NGO's profile to find its MongoDB _id (used as assignedNGO)
-      let ngoProfileId: string | undefined;
-      if (user) {
-        try {
-          const profile = await ngoApi.getMyProfile(user.id);
-          ngoProfileId = profile._id;
-        } catch {
-          // No profile yet — ngoProfileId stays undefined, query returns nothing
-        }
-      }
-
-      // Step 2: fetch only THIS NGO's requests — never fall back to all
-      const all = await requestsApi.getAll(
-        ngoProfileId ? { assignedNGO: ngoProfileId } : { assignedNGO: "__none__" }
-      );
-
-      // Step 3: keep only requests that have a volunteer involved
+      // user.id is stored directly as assignedNGO by the routing engine
+      const all = await requestsApi.getAll({ assignedNGO: user.id });
       setRequests(all.filter(r => VOLUNTEER_STATUSES.includes(r.status)));
     } catch {
       setError("Could not load assignments. Make sure the server is running.");

@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 import { useAuth }      from "../../context/AuthContext.js";
 import { requestsApi }  from "../../services/requestsApi.js";
-import { ngoApi, type NGOProfileData } from "../../services/ngoApi.js";
 import type { ReliefRequest } from "../../types/index.js";
 import PageContainer from "../../components/PageContainer.js";
 import PageHeader    from "../../components/PageHeader.js";
@@ -34,33 +33,17 @@ export const NgoDashboard: React.FC = () => {
 
   const [assignedRequests, setAssignedRequests] = useState<ReliefRequest[]>([]);
   const [allRequests,      setAllRequests]      = useState<ReliefRequest[]>([]);
-  const [ngoProfile,       setNgoProfile]       = useState<NGOProfileData | null>(null);
   const [loading,          setLoading]          = useState(true);
   const [accepting,        setAccepting]        = useState<string | null>(null);
-  const [noProfile,        setNoProfile]        = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    setNoProfile(false);
     try {
-      // Step 1: resolve this NGO's MongoDB profile _id (used as assignedNGO on requests)
-      let profile: NGOProfileData | null = null;
-      try {
-        profile = await ngoApi.getMyProfile(user.id);
-        setNgoProfile(profile);
-      } catch {
-        // No profile yet — prompt user to complete setup
-        setNoProfile(true);
-        setAssignedRequests([]);
-        setAllRequests([]);
-        return;
-      }
-
-      // Step 2: fetch only THIS NGO's requests using profile._id
+      // Use user.id directly — routing now stores User._id in assignedNGO
       const [assigned, all] = await Promise.all([
-        requestsApi.getAll({ assignedNGO: profile._id, status: "ngo_assigned" }),
-        requestsApi.getAll({ assignedNGO: profile._id }),
+        requestsApi.getAll({ assignedNGO: user.id, status: "ngo_assigned" }),
+        requestsApi.getAll({ assignedNGO: user.id }),
       ]);
       setAssignedRequests(assigned);
       setAllRequests(all);
@@ -98,20 +81,6 @@ export const NgoDashboard: React.FC = () => {
 
   return (
     <PageContainer>
-      {/* No profile yet — prompt to complete setup */}
-      {!loading && noProfile && (
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "14px 18px", borderRadius: "12px", backgroundColor: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.3)", marginBottom: "20px" }}>
-          <AlertTriangle size={16} style={{ color: "var(--warning)", flexShrink: 0 }} />
-          <div>
-            <p style={{ margin: "0 0 2px", fontSize: "14px", fontWeight: 700, color: "var(--text-h)" }}>Complete your NGO profile</p>
-            <p style={{ margin: 0, fontSize: "13px", color: "var(--secondary)" }}>Your profile isn't set up yet. The routing system needs your service areas before requests can be assigned to you.</p>
-          </div>
-          <Link to="/ngo/profile" style={{ marginLeft: "auto", padding: "8px 16px", borderRadius: "8px", backgroundColor: "var(--warning)", color: "#fff", fontWeight: 700, fontSize: "13px", textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>
-            Set Up Profile
-          </Link>
-        </div>
-      )}
-
       {/* Awaiting acceptance banner */}
       {!loading && awaitingCount > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 16px", borderRadius: "10px", backgroundColor: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)", marginBottom: "24px" }}>
@@ -126,7 +95,7 @@ export const NgoDashboard: React.FC = () => {
       )}
 
       <PageHeader
-        title={ngoProfile ? ngoProfile.orgName : (user?.organizationName ?? "NGO Dashboard")}
+        title={user?.organizationName ?? "NGO Dashboard"}
         description="Your assigned requests and deliveries — only your organisation's data."
         actions={
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
@@ -234,11 +203,11 @@ export const NgoDashboard: React.FC = () => {
             ))}
           </div>
 
-          {ngoProfile && (
+          {user?.district && (
             <div style={{ marginTop: "14px", padding: "12px 14px", borderRadius: "8px", backgroundColor: "rgba(5,150,105,0.06)", border: "1px solid rgba(5,150,105,0.15)" }}>
               <p style={{ margin: "0 0 4px", fontSize: "12px", fontWeight: 600, color: "var(--success)" }}>Routing Active</p>
               <p style={{ margin: 0, fontSize: "12px", color: "var(--secondary)", lineHeight: 1.5 }}>
-                Covering <strong>{ngoProfile.serviceAreas.districtIds.length}</strong> district{ngoProfile.serviceAreas.districtIds.length !== 1 ? "s" : ""}. Capacity: {ngoProfile.currentWorkload}/{ngoProfile.resourceCapacity} requests.
+                Receiving requests from <strong>{user.district}</strong> district.
               </p>
             </div>
           )}
