@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Plus, RefreshCw, Power, Edit2, AlertCircle,
+  Plus, RefreshCw, Edit2, AlertCircle,
   CheckCircle, XCircle, Building2, MapPin, Users, Clock,
 } from "lucide-react";
 import { ngoApi, type NGOProfileData, type CreateNGOPayload } from "../../services/ngoApi.js";

@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AlertCircle, ShieldCheck, Home, Building2, HandHelping } from "lucide-react";
+import { AlertCircle, ShieldCheck, Home, Building2, HandHelping, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.js";
 import type { UserRole } from "../../types/index.js";
+import { Helmet } from "react-helmet-async";
 
 // ── Role tiles ────────────────────────────────────────────────────────────────
 const ROLES: { value: UserRole; label: string; Icon: React.ElementType; hint: string }[] = [
@@ -49,6 +50,7 @@ export const Register: React.FC = () => {
   const [otherProfession, setOtherProfession] = useState("");
   const [error,   setError]   = useState("");
   const [busy,    setBusy]    = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,6 +107,10 @@ export const Register: React.FC = () => {
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px", backgroundColor: "var(--bg)" }}>
+      <Helmet>
+        <title>Create Account | Disaster Resource Coordination Platform</title>
+        <meta name="description" content="Join the disaster relief network as a citizen, NGO, or volunteer to coordinate and receive emergency assistance." />
+      </Helmet>
       <div style={{ width: "100%", maxWidth: "420px" }}>
 
         {/* Logo */}
@@ -269,14 +275,24 @@ export const Register: React.FC = () => {
               <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
                 Password <span style={{ color: "var(--danger)" }}>*</span>
               </label>
-              <input
-                type="password"
-                value={pass}
-                onChange={e => { setPass(e.target.value); setError(""); }}
-                placeholder="Min. 6 characters"
-                autoComplete="new-password"
-                style={inp}
-              />
+              <div style={{ position: "relative" }}>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={pass}
+                  onChange={e => { setPass(e.target.value); setError(""); }}
+                  placeholder="Min. 6 characters"
+                  autoComplete="new-password"
+                  style={{ ...inp, paddingRight: "40px" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--secondary)", padding: 0 }}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             {error && (
@@ -306,6 +322,12 @@ export const Register: React.FC = () => {
 
         <p style={{ textAlign: "center", marginTop: "8px", fontSize: "11px", color: "var(--secondary)", opacity: 0.7 }}>
           Administrator accounts are created by the system admin.
+        </p>
+        <p style={{ textAlign: "center", marginTop: "8px", fontSize: "11px", color: "var(--secondary)", opacity: 0.7 }}>
+          By creating an account, you agree to our{" "}
+          <Link to="/terms" style={{ color: "var(--primary)", textDecoration: "none" }}>Terms of Service</Link>
+          {" "}and{" "}
+          <Link to="/privacy" style={{ color: "var(--primary)", textDecoration: "none" }}>Privacy Policy</Link>.
         </p>
       </div>
     </div>

@@ -35,6 +35,7 @@ export const Login: React.FC = () => {
   const [error,    setError]    = useState("");
   const [busy,     setBusy]     = useState(false);
   const [copied,   setCopied]   = useState<"email" | "pass" | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   React.useEffect(() => {
     if (isAuthenticated) navigate(from ?? getDashboardPath(), { replace: true });
@@ -89,6 +90,10 @@ export const Login: React.FC = () => {
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px", backgroundColor: "var(--bg)" }}>
+      <Helmet>
+        <title>Sign In | Disaster Resource Coordination Platform</title>
+        <meta name="description" content="Sign in to your account to access disaster relief coordination tools and manage relief requests." />
+      </Helmet>
       <div style={{ width: "100%", maxWidth: "400px" }}>
 
         {/* Logo */}
@@ -173,14 +178,24 @@ export const Login: React.FC = () => {
                   Forgot password?
                 </Link>
               </div>
-              <input
-                type="password"
-                value={password}
-                onChange={e => { setPassword(e.target.value); setError(""); }}
-                placeholder="••••••••"
-                autoComplete="current-password"
-                style={inp}
-              />
+              <div style={{ position: "relative" }}>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setError(""); }}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                  style={{ ...inp, paddingRight: "40px" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--secondary)", padding: 0 }}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             {error && (
