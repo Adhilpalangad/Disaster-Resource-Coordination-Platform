@@ -36,7 +36,7 @@ const PROFESSIONS = [
 ];
 
 export const Register: React.FC = () => {
-  const { register } = useAuth();
+  const { register, isAuthenticated, getDashboardPath } = useAuth();
   const navigate     = useNavigate();
 
   const [role,    setRole]    = useState<UserRole>("citizen");
@@ -51,6 +51,10 @@ export const Register: React.FC = () => {
   const [error,   setError]   = useState("");
   const [busy,    setBusy]    = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  React.useEffect(() => {
+    if (isAuthenticated) navigate(getDashboardPath(), { replace: true });
+  }, [isAuthenticated, navigate, getDashboardPath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

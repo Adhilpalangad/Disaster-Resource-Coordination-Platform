@@ -28,7 +28,8 @@
     "nodemailer": "^9.0.4",
     "ws": "^8.21.2",
     "xlsx": "^0.18.5",
-    "xss": "^1.0.15"
+    "xss": "^1.0.15",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

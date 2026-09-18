@@ -1,228 +1,352 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { ChevronDown, Home, Building2, HandHelping, ShieldCheck, LifeBuoy, Mail, HelpCircle } from "lucide-react";
 import PageContainer from "../../components/PageContainer.js";
 import PageHeader from "../../components/PageHeader.js";
 import Card from "../../components/Card.js";
-import { Link } from "react-router-dom";
-import {
-  HelpCircle,
-  ChevronDown,
-  ChevronUp,
-  PhoneCall,
-  ArrowRight,
-} from "lucide-react";
+import SearchBar from "../../components/SearchBar.js";
+import EmptyState from "../../components/EmptyState.js";
+import { useAuth } from "../../context/AuthContext.js";
+import type { UserRole } from "../../types/index.js";
 
-interface FAQItem {
+type RoleFilter = UserRole | "all";
+
+interface FaqItem {
+  id: string;
   question: string;
   answer: string;
-  category: string;
+  roles: RoleFilter[]; // "all" applies regardless of the selected role filter
 }
 
-const FAQS: FAQItem[] = [
+interface FaqSection {
+  id: string;
+  title: string;
+  items: FaqItem[];
+}
+
+const ROLE_META: Record<RoleFilter, { label: string; icon: React.ElementType; bg: string; color: string }> = {
+  all:       { label: "All Roles", icon: LifeBuoy,    bg: "rgba(2,132,199,0.1)",  color: "#0284C7" },
+  citizen:   { label: "Citizen",   icon: Home,        bg: "rgba(2,132,199,0.1)",  color: "#0284C7" },
+  ngo:       { label: "NGO",       icon: Building2,   bg: "rgba(124,58,237,0.1)", color: "#7C3AED" },
+  volunteer: { label: "Volunteer", icon: HandHelping, bg: "rgba(5,150,105,0.1)",  color: "#059669" },
+  admin:     { label: "Admin",     icon: ShieldCheck, bg: "rgba(220,38,38,0.1)",  color: "#DC2626" },
+};
+
+const ROLE_ORDER: RoleFilter[] = ["all", "citizen", "ngo", "volunteer", "admin"];
+
+const FAQ_SECTIONS: FaqSection[] = [
   {
-    category: "Relief Requests",
-    question: "How do I submit an emergency relief request?",
-    answer:
-      "Navigate to 'New Request' from your dashboard sidebar. Select the request category (Food, Water, Medicine, Shelter, Rescue), fill in your location details down to the local body level, specify the number of affected individuals, and submit. The platform will automatically route your request to the nearest available NGO.",
+    id: "login",
+    title: "Signing In & Passwords",
+    items: [
+      {
+        id: "how-to-sign-in",
+        roles: ["all"],
+        question: "How do I sign in?",
+        answer:
+          "There's a single sign-in page for every account type — Citizen, NGO, Volunteer, and Admin. Enter the email and password you registered with; the platform reads your account's role and sends you straight to the right dashboard (Citizen → Dashboard, NGO → NGO Console, Volunteer → Workstation, Admin → Admin Console).",
+      },
+      {
+        id: "incorrect-credentials",
+        roles: ["all"],
+        question: "Why do I get “Incorrect email or password”?",
+        answer:
+          "This means the email and password you entered don't match an account. Check for typos, extra spaces, and Caps Lock. If you're confident your password is right but it still fails, use “Forgot password?” on the sign-in page to set a new one.",
+      },
+      {
+        id: "forgot-password",
+        roles: ["all"],
+        question: "I forgot my password — what do I do?",
+        answer:
+          "Click “Forgot password?” on the sign-in page and enter your registered email. You'll see the same “check your inbox” confirmation whether or not that email has an account — that's intentional, for privacy, so this step alone won't confirm an account exists. If you do have one, a reset link will arrive by email; open it to set a new password (minimum 6 characters).",
+      },
+      {
+        id: "invalid-reset-link",
+        roles: ["all"],
+        question: "My reset link says “Invalid Link” or has expired",
+        answer:
+          "Reset links are single-use and time-limited. If yours no longer works, return to the Forgot Password page, request a fresh link, and open it right away.",
+      },
+      {
+        id: "signed-up-cant-login",
+        roles: ["all"],
+        question: "I just registered but can't sign in",
+        answer:
+          "New accounts are active immediately — there's no separate email verification step, so you should be able to sign in right away with the email and password you registered. If it still fails, double-check the email for typos, or use “Forgot password?” to set a new one.",
+      },
+      {
+        id: "unexpected-redirect",
+        roles: ["all"],
+        question: "Why was I redirected somewhere I didn't expect?",
+        answer:
+          "This happens in two specific cases. If you weren't signed in, you're sent to the sign-in page — after logging in, you're taken back to the page you originally tried to open. If you were signed in but tried to open a page belonging to a different account type (for example, a Citizen opening an NGO page), you're sent straight to your own dashboard instead, with no error message shown. Every account has exactly one fixed role, and each section of the platform only opens for its matching role — so this redirect is expected behavior, not a bug.",
+      },
+      {
+        id: "session-expired",
+        roles: ["all"],
+        question: "My session keeps expiring / I keep getting logged out",
+        answer:
+          "Your sign-in is verified on every request. Once your session token expires, you'll be signed out automatically and sent back to the sign-in page the next time you open a page that needs one — just sign in again to continue.",
+      },
+    ],
   },
   {
-    category: "Relief Requests",
-    question: "What do the different request status levels mean?",
-    answer:
-      "• Pending: Request submitted and awaiting routing.\n• NGO Assigned: Automated engine assigned your request to a local NGO.\n• NGO Accepted & Verified: The assigned NGO verified authenticity.\n• Resources Reserved: Relief supplies reserved in inventory.\n• In Transit: Volunteer or NGO response team en route to deliver.\n• Delivered: Supplies arrived; awaiting your confirmation.",
+    id: "accounts",
+    title: "Registration & Account Types",
+    items: [
+      {
+        id: "register-citizen",
+        roles: ["citizen"],
+        question: "What do I need to register as a Citizen?",
+        answer:
+          "Just your full name, email, and a password (minimum 6 characters). Phone number is optional but helps NGOs and volunteers reach you about a request.",
+      },
+      {
+        id: "register-ngo",
+        roles: ["ngo"],
+        question: "What do I need to register as an NGO?",
+        answer:
+          "Name, email, and password, plus your Organization Name and District — both required. Your district determines which relief requests in that service area get routed to your organization.",
+      },
+      {
+        id: "register-volunteer",
+        roles: ["volunteer"],
+        question: "What do I need to register as a Volunteer?",
+        answer:
+          "Name, email, and password, plus your District and Profession / Skills — both required. NGOs use these to match you with nearby tasks suited to your skillset.",
+      },
+      {
+        id: "duplicate-email",
+        roles: ["all"],
+        question: "“An account with this email already exists” when registering",
+        answer:
+          "That email is already registered. Go to the sign-in page and log in instead — if you don't remember the password, use “Forgot password?” to reset it.",
+      },
+      {
+        id: "admin-account",
+        roles: ["admin"],
+        question: "How do I get an Administrator account?",
+        answer:
+          "Administrator accounts aren't self-service — they're provisioned directly by whoever manages the platform's database. If you need admin access, contact the project maintainer.",
+      },
+    ],
+  },
+];
+
+const TROUBLESHOOTING: { title: string; steps: string[] }[] = [
+  {
+    title: "Can't sign in at all",
+    steps: [
+      "Re-check the email and password for typos, extra spaces, or Caps Lock.",
+      "Use “Forgot password?” on the sign-in page to set a new password.",
+      "Not sure you ever registered? Try creating an account — you'll get an “already exists” message if you already have one.",
+    ],
   },
   {
-    category: "NGO & Inventory",
-    question: "How does NGO verification work?",
-    answer:
-      "NGO representatives register during signup. Platform administrators review organization credentials and verify official documentation before enabling full dispatch and resource allocation permissions.",
+    title: "Password reset link not working",
+    steps: [
+      "Request a new link from the Forgot Password page — old links stop working once a new one is issued or once used.",
+      "Open the new link as soon as it arrives; reset links are time-limited.",
+      "Complete the reset on the same device/browser where you opened the link.",
+    ],
   },
   {
-    category: "NGO & Inventory",
-    question: "How do NGOs manage supply inventory and Excel imports?",
-    answer:
-      "NGO managers can add items individually or use the 'Bulk Import' feature to upload standardized Excel (.xlsx) templates. The platform validates quantities and categories before writing to the database.",
-  },
-  {
-    category: "Shelters & Volunteers",
-    question: "How can citizens find open relief shelters?",
-    answer:
-      "Visit the 'Shelters' page in the sidebar. You can search shelters by sector or district to view current occupancy rates, total capacity, manager contact details, and operational status.",
-  },
-  {
-    category: "Shelters & Volunteers",
-    question: "How do registered volunteers join disaster response operations?",
-    answer:
-      "Volunteers registered with 'Volunteer' role can access the Volunteer Dashboard, view active disaster incidents in their district, and click 'Opt-In to Respond' to join relief deployment rosters.",
-  },
-  {
-    category: "Account & Security",
-    question: "How is my personal and location data protected?",
-    answer:
-      "All requests and authentication data are encrypted using Supabase JWT tokens and HTTPS/TLS transport. Access to exact contact information is restricted strictly to assigned responders and verified NGOs.",
+    title: "Redirected to the wrong page",
+    steps: [
+      "Sections like the NGO Console, Volunteer Workstation, and Admin Console only open for accounts with that role.",
+      "Your account has exactly one role, fixed at registration, so you'll always land on your own dashboard rather than an error page.",
+      "Need a different role's tools? That requires a separate account registered under that role.",
+    ],
   },
 ];
 
 export const HelpCenter: React.FC = () => {
-  const [openIndex, setOpenIndex] = useState<number | null>(0);
-  const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const { user, isAuthenticated, getDashboardPath } = useAuth();
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>(user?.role ?? "all");
+  const [openId, setOpenId] = useState<string | null>(null);
 
-  const categories = ["All", "Relief Requests", "NGO & Inventory", "Shelters & Volunteers", "Account & Security"];
+  const query = search.trim().toLowerCase();
 
-  const filteredFaqs = FAQS.filter((faq) =>
-    selectedCategory === "All" ? true : faq.category === selectedCategory
-  );
+  const visibleSections = useMemo(() => {
+    return FAQ_SECTIONS
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) => {
+          const roleMatch = roleFilter === "all" || item.roles.includes("all") || item.roles.includes(roleFilter);
+          if (!roleMatch) return false;
+          if (!query) return true;
+          return item.question.toLowerCase().includes(query) || item.answer.toLowerCase().includes(query);
+        }),
+      }))
+      .filter((section) => section.items.length > 0);
+  }, [roleFilter, query]);
 
-  const toggleAccordion = (idx: number) => {
-    setOpenIndex(openIndex === idx ? null : idx);
-  };
+  const hasResults = visibleSections.length > 0;
 
   return (
     <PageContainer>
       <PageHeader
-        title="Help Center & Operating Guides"
-        description="Explore platform documentation, request workflows, disaster response protocols, and emergency assistance."
-        breadcrumbs={[{ label: "Overview", path: "/dashboard" }, { label: "Help Center" }]}
+        title="Help Center & Documentation"
+        description="Guidance for signing in, registering, and troubleshooting your account — for every role on the platform."
+        breadcrumbs={[
+          { label: isAuthenticated ? "Overview" : "Home", path: isAuthenticated ? getDashboardPath() : "/home" },
+          { label: "Help Center" },
+        ]}
       />
 
-      {/* Emergency Hotlines Banner */}
-      <div
-        style={{
-          backgroundColor: "rgba(239, 68, 68, 0.08)",
-          border: "1px solid rgba(239, 68, 68, 0.2)",
-          borderRadius: "14px",
-          padding: "20px",
-          marginBottom: "24px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: "16px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-          <div
-            style={{
-              width: "44px",
-              height: "44px",
-              borderRadius: "12px",
-              backgroundColor: "rgba(239, 68, 68, 0.15)",
-              color: "var(--danger, #EF4444)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <PhoneCall size={22} />
-          </div>
-          <div>
-            <div style={{ fontSize: "16px", fontWeight: 700, color: "var(--text-h, #0F172A)" }}>
-              Emergency Hotline Quick Contacts
-            </div>
-            <div style={{ fontSize: "13px", color: "var(--secondary, #475569)" }}>
-              State Disaster Control Room: <strong>1077</strong> | Police: <strong>112</strong> | Fire & Rescue: <strong>101</strong>
-            </div>
-          </div>
-        </div>
-        <Link
-          to="/contact"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "6px",
-            padding: "9px 16px",
-            borderRadius: "10px",
-            backgroundColor: "var(--danger, #EF4444)",
-            color: "#FFFFFF",
-            fontWeight: 600,
-            fontSize: "13px",
-            textDecoration: "none",
-          }}
-        >
-          Contact Support <ArrowRight size={14} />
-        </Link>
-      </div>
-
-      {/* Category Pills */}
-      <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
-        {categories.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "20px",
-              fontSize: "13px",
-              fontWeight: 600,
-              border: "1px solid var(--border, #E2E8F0)",
-              cursor: "pointer",
-              backgroundColor: selectedCategory === cat ? "var(--primary, #0284C7)" : "var(--card-bg, #FFFFFF)",
-              color: selectedCategory === cat ? "#FFFFFF" : "var(--secondary, #64748B)",
-              transition: "all 0.15s ease",
-            }}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
-
-      {/* FAQ Accordion List */}
-      <Card title={`Frequently Asked Questions (${filteredFaqs.length})`}>
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          {filteredFaqs.map((faq, idx) => {
-            const isOpen = openIndex === idx;
+      {/* Search + role filter toolbar */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "20px" }}>
+        <SearchBar value={search} onChange={setSearch} placeholder="Search help topics…" style={{ maxWidth: "100%" }} />
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          {ROLE_ORDER.map((role) => {
+            const meta = ROLE_META[role];
+            const Icon = meta.icon;
+            const active = roleFilter === role;
             return (
-              <div
-                key={idx}
+              <button
+                key={role}
+                type="button"
+                onClick={() => setRoleFilter(role)}
                 style={{
-                  border: "1px solid var(--border, #E2E8F0)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "8px 14px",
                   borderRadius: "10px",
-                  overflow: "hidden",
-                  backgroundColor: "var(--bg, #F8FAFC)",
+                  border: `1.5px solid ${active ? meta.color : "var(--border)"}`,
+                  backgroundColor: active ? meta.bg : "var(--card-bg)",
+                  color: active ? meta.color : "var(--secondary)",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.14s",
                 }}
               >
-                <button
-                  onClick={() => toggleAccordion(idx)}
-                  style={{
-                    width: "100%",
-                    padding: "14px 18px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    textAlign: "left",
-                    color: "var(--text-h, #0F172A)",
-                    fontWeight: 600,
-                    fontSize: "14px",
-                  }}
-                >
-                  <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <HelpCircle size={16} color="var(--primary, #0284C7)" />
-                    {faq.question}
-                  </span>
-                  {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                </button>
-
-                {isOpen && (
-                  <div
-                    style={{
-                      padding: "0 18px 16px 44px",
-                      fontSize: "14px",
-                      color: "var(--secondary, #475569)",
-                      lineHeight: "1.6",
-                      whiteSpace: "pre-line",
-                      borderTop: "1px solid var(--border, #E2E8F0)",
-                      paddingTop: "12px",
-                      backgroundColor: "var(--card-bg, #FFFFFF)",
-                    }}
-                  >
-                    {faq.answer}
-                  </div>
-                )}
-              </div>
+                <Icon size={14} /> {meta.label}
+              </button>
             );
           })}
+        </div>
+      </div>
+
+      {!hasResults ? (
+        <EmptyState
+          icon={<HelpCircle size={36} />}
+          title="No matching help topics"
+          description="Try a different search term, or switch back to “All Roles”."
+        />
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+          {visibleSections.map((section) => (
+            <Card key={section.id} title={section.title}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {section.items.map((item) => {
+                  const open = openId === item.id;
+                  return (
+                    <div key={item.id} style={{ border: "1px solid var(--border)", borderRadius: "10px", overflow: "hidden" }}>
+                      <button
+                        type="button"
+                        onClick={() => setOpenId(open ? null : item.id)}
+                        style={{
+                          width: "100%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: "12px",
+                          padding: "13px 16px",
+                          border: "none",
+                          backgroundColor: open ? "var(--bg)" : "var(--card-bg)",
+                          color: "var(--text-h)",
+                          fontSize: "14px",
+                          fontWeight: 600,
+                          textAlign: "left",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {item.question}
+                        <ChevronDown
+                          size={16}
+                          style={{ flexShrink: 0, color: "var(--secondary)", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}
+                        />
+                      </button>
+                      {open && (
+                        <div style={{ padding: "0 16px 16px", fontSize: "13px", lineHeight: 1.6, color: "var(--secondary)", backgroundColor: "var(--bg)" }}>
+                          {item.answer}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Troubleshooting checklists */}
+      <Card
+        title="Troubleshooting Checklists"
+        subtitle="Step-by-step fixes for the most common sign-in issues"
+        style={{ marginTop: "20px" }}
+      >
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "18px" }}>
+          {TROUBLESHOOTING.map((block) => (
+            <div key={block.title}>
+              <p style={{ margin: "0 0 10px", fontSize: "13px", fontWeight: 700, color: "var(--text-h)" }}>{block.title}</p>
+              <ol style={{ margin: 0, paddingLeft: "18px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                {block.steps.map((step, i) => (
+                  <li key={i} style={{ fontSize: "13px", color: "var(--secondary)", lineHeight: 1.5 }}>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Contact & support */}
+      <Card title="Still need help?" subtitle="Reach the coordination team directly" style={{ marginTop: "20px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "14px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div
+              style={{
+                width: "36px",
+                height: "36px",
+                borderRadius: "10px",
+                backgroundColor: "rgba(2,132,199,0.1)",
+                color: "var(--primary)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Mail size={16} />
+            </div>
+            <p style={{ margin: 0, fontSize: "13px", color: "var(--secondary)", maxWidth: "420px" }}>
+              Can't find what you're looking for? Send us the details on the Contact page and the coordination team will follow up.
+            </p>
+          </div>
+          <Link
+            to="/contact"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "10px 18px",
+              borderRadius: "10px",
+              backgroundColor: "var(--primary)",
+              color: "#fff",
+              fontWeight: 700,
+              fontSize: "13px",
+              textDecoration: "none",
+              flexShrink: 0,
+            }}
+          >
+            Contact Support
+          </Link>
         </div>
       </Card>
     </PageContainer>

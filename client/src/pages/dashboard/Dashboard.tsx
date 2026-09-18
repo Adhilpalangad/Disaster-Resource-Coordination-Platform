@@ -43,9 +43,9 @@ export const Dashboard: React.FC = () => {
 
   useEffect(() => { fetchRequests(); }, [fetchRequests]);
 
-  const pending  = requests.filter(r => r.status === "pending_verification").length;
-  const active   = requests.filter(r => ["verified", "assigned", "in_progress"].includes(r.status)).length;
-  const resolved = requests.filter(r => r.status === "resolved").length;
+  const pending  = requests.filter(r => r.status === "pending" || r.status === "location_routed").length;
+  const active   = requests.filter(r => ["ngo_assigned", "ngo_accepted", "verified", "resources_reserved", "volunteer_assigned", "in_transit"].includes(r.status)).length;
+  const resolved = requests.filter(r => r.status === "completed" || r.status === "delivered").length;
   const recent   = requests.slice(0, 5);
 
   const kpis = [

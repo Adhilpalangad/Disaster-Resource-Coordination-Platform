@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { AlertCircle, ShieldCheck, Zap, Copy, Check, Eye, EyeOff } from "lucide-react";
 import { Helmet } from "react-helmet-async";
+import { AlertCircle, ShieldCheck, Zap, Copy, Check, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.js";
 import api from "../../services/api.js";
 
