@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { AlertCircle, ShieldCheck, Zap, Copy, Check } from "lucide-react";
+import { AlertCircle, ShieldCheck, Zap, Copy, Check, Eye, EyeOff } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 import { useAuth } from "../../context/AuthContext.js";
 import api from "../../services/api.js";
 
 interface LocationState {
   from?: { pathname: string };
 }
-
 // Predefined admin credentials — must match server/src/features/auth/auth.controller.ts
 const ADMIN_EMAIL    = "admin@kdrp.in";
 const ADMIN_PASSWORD = "Admin@2024";
