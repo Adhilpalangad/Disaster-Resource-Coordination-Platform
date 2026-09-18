@@ -21,6 +21,8 @@ import NotFound from "./pages/public/NotFound.js";
 import Notifications from "./pages/notifications/Notifications.js";
 import Profile from "./pages/profile/Profile.js";
 import Settings from "./pages/settings/Settings.js";
+
+// ── Help Center (public — must stay reachable to signed-out/locked-out users) ─
 import HelpCenter from "./pages/help/HelpCenter.js";
 
 // ── Citizen Pages ──────────────────────────────────────────────────────────────
@@ -78,6 +80,7 @@ export function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/help" element={<HelpCenter />} />
         </Route>
 
         {/* ── Citizen Routes ─────────────────────────────────────────────── */}
@@ -134,7 +137,6 @@ export function App() {
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />
-            <Route path="/help" element={<HelpCenter />} />
           </Route>
         </Route>
 

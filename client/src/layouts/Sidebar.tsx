@@ -49,6 +49,7 @@ const NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { label: "Notifications", path: "/notifications", icon: <Bell size={18} /> },
     { label: "Profile", path: "/profile", icon: <User size={18} /> },
     { label: "Settings", path: "/settings", icon: <Settings size={18} /> },
+    { label: "Help Center", path: "/help", icon: <HelpCircle size={18} /> },
   ],
   volunteer: [
     { label: "Workstation", path: "/volunteer/dashboard", icon: <Users size={18} /> },
@@ -66,6 +67,7 @@ const NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { label: "Manage Resources", path: "/admin/resources", icon: <Package size={18} /> },
     { label: "Analytics", path: "/admin/analytics", icon: <BarChart3 size={18} /> },
     { label: "System Settings", path: "/admin/settings", icon: <Sliders size={18} /> },
+    { label: "Help Center", path: "/help", icon: <HelpCircle size={18} /> },
   ],
 };
 
