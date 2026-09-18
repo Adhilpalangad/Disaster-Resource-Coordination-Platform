@@ -185,7 +185,7 @@ export const respondToDisaster = async (req: Request, res: Response): Promise<vo
 
     const volunteerId = (req.user._id as { toString(): string }).toString();
 
-    const response = await VolunteerDisasterResponse.findOneAndUpdate(
+    const response = await (VolunteerDisasterResponse as any).findOneAndUpdate(
       { disasterId: req.params.id, volunteerId },
       {
         disasterId:     req.params.id,
@@ -209,7 +209,7 @@ export const respondToDisaster = async (req: Request, res: Response): Promise<vo
  *  Returns all volunteer opt-in responses for a given disaster. */
 export const getVolunteerResponses = async (req: Request, res: Response): Promise<void> => {
   try {
-    const responses = await VolunteerDisasterResponse.find({ disasterId: req.params.id })
+    const responses = await (VolunteerDisasterResponse as any).find({ disasterId: req.params.id })
       .sort({ respondedAt: -1 })
       .lean();
     res.json({ success: true, data: responses });

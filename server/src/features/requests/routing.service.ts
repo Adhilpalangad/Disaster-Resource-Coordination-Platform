@@ -194,7 +194,7 @@ export class RoutingService {
     const scored = await Promise.all(
       ngos.map(async (ngo) => {
         const userId = (ngo._id as { toString(): string }).toString();
-        const activeRequests = await ReliefRequest.countDocuments({
+        const activeRequests = await (ReliefRequest as any).countDocuments({
           assignedNGO: userId,
           status: { $nin: ["completed", "rejected", "escalated", "resolved"] },
         });

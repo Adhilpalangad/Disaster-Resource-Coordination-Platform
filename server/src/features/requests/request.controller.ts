@@ -44,7 +44,11 @@ export const createRequest = async (req: Request, res: Response): Promise<void> 
     }
 
     let imageUrl: string | undefined;
-    if (req.file) imageUrl = `/uploads/${req.file.filename}`;
+    if (req.file) {
+      imageUrl = req.file.filename.startsWith("http")
+        ? req.file.filename
+        : `/uploads/${req.file.filename}`;
+    }
 
     const locationDoc: IRequestLocation = {
       stateId:       location.stateId       || "KL",
