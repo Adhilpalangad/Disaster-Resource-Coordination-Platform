@@ -128,7 +128,7 @@ const PreviewTable: React.FC<{
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => {
+              {rows.map((row, _idx) => {
                 const catDisplay = getCatDisplay(row.category);
                 return (
                   <tr key={row._id} style={{ borderBottom: "1px solid var(--border)", backgroundColor: !row._valid ? "rgba(239,68,68,0.03)" : "transparent" }}>

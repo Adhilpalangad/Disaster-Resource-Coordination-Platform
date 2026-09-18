@@ -4,10 +4,15 @@ import {
   MapPin, CheckCircle2, Navigation, Clock,
   Package, Utensils, Droplets, HeartPulse, Home,
   AlertTriangle, Truck, ArrowRight, RefreshCw, UserCheck,
+  Bell, CheckCheck, XCircle, Flame, Wind, Waves,
 } from "lucide-react";
-import { useAuth }      from "../../context/AuthContext.js";
-import { requestsApi }  from "../../services/requestsApi.js";
-import type { ReliefRequest, RequestCategory } from "../../types/index.js";
+import { useAuth }       from "../../context/AuthContext.js";
+import { requestsApi }   from "../../services/requestsApi.js";
+import { disastersApi }  from "../../services/disastersApi.js";
+import type {
+  ReliefRequest, RequestCategory,
+  Disaster, VolunteerDisasterResponse,
+} from "../../types/index.js";
 import PageContainer from "../../components/PageContainer.js";
 import PageHeader    from "../../components/PageHeader.js";
 import StatusBadge   from "../../components/StatusBadge.js";
@@ -20,6 +25,13 @@ const CATEGORY_ICONS: Record<RequestCategory, React.ElementType> = {
   food: Utensils, water: Droplets, medicine: HeartPulse,
   shelter: Home, rescue: AlertTriangle, transportation: Truck, other: Package,
 };
+const DISASTER_ICON: Record<string, React.ElementType> = {
+  flood: Droplets, earthquake: AlertTriangle, cyclone: Wind,
+  landslide: MapPin, fire: Flame, tsunami: Waves, other: AlertTriangle,
+};
+const SEVERITY_COLOR: Record<string, string> = {
+  critical: "#7c3aed", high: "var(--danger)", moderate: "var(--warning)", low: "var(--success)",
+};
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -31,11 +43,98 @@ function timeAgo(iso: string): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
+// ── Disaster Alert Banner ─────────────────────────────────────────────────────
+
+interface DisasterAlertProps {
+  disaster: Disaster;
+  myResponse: VolunteerDisasterResponse | undefined;
+  onRespond: (disasterId: string, status: "available" | "unavailable") => void;
+  responding: string | null; // disasterId currently being responded to
+}
+
+const DisasterAlertCard: React.FC<DisasterAlertProps> = ({
+  disaster, myResponse, onRespond, responding,
+}) => {
+  const Icon        = DISASTER_ICON[disaster.type] ?? AlertTriangle;
+  const sevColor    = SEVERITY_COLOR[disaster.severity] ?? "var(--warning)";
+  const isResponding = responding === disaster._id;
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "flex-start", gap: "14px",
+      padding: "14px 16px",
+      borderRadius: "12px",
+      border: `1px solid ${sevColor}40`,
+      backgroundColor: `${sevColor}08`,
+      borderLeft: `4px solid ${sevColor}`,
+    }}>
+      <div style={{
+        width: "36px", height: "36px", borderRadius: "8px",
+        backgroundColor: `${sevColor}18`, color: sevColor,
+        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+      }}>
+        <Icon size={16} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "3px" }}>
+          <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-h)" }}>{disaster.title}</span>
+          <span style={{ fontSize: "10px", fontWeight: 700, padding: "2px 7px", borderRadius: "99px", backgroundColor: `${sevColor}18`, color: sevColor, textTransform: "uppercase" }}>
+            {disaster.severity}
+          </span>
+        </div>
+        <p style={{ margin: "0 0 6px", fontSize: "12px", color: "var(--secondary)", lineHeight: 1.5 }}>
+          {disaster.affectedDistrictNames.join(", ")} · {disaster.type}
+        </p>
+
+        {myResponse ? (
+          /* Already responded */
+          <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 10px", borderRadius: "99px", fontSize: "12px", fontWeight: 600,
+            backgroundColor: myResponse.status === "available" ? "rgba(5,150,105,0.12)" : "rgba(107,114,128,0.12)",
+            color: myResponse.status === "available" ? "var(--success)" : "var(--secondary)",
+            border: `1px solid ${myResponse.status === "available" ? "rgba(5,150,105,0.3)" : "var(--border)"}`,
+          }}>
+            {myResponse.status === "available"
+              ? <><CheckCheck size={12} /> You responded: Available</>
+              : <><XCircle size={12} /> You responded: Not available</>
+            }
+          </div>
+        ) : (
+          /* Not yet responded */
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <button
+              onClick={() => onRespond(disaster._id, "available")}
+              disabled={isResponding}
+              style={{ display: "flex", alignItems: "center", gap: "5px", padding: "6px 14px", borderRadius: "8px", border: "none", backgroundColor: isResponding ? "var(--secondary)" : "var(--success)", color: "#fff", fontWeight: 600, fontSize: "12px", cursor: isResponding ? "not-allowed" : "pointer" }}
+            >
+              <CheckCircle2 size={13} /> {isResponding ? "Saving…" : "I'm Available"}
+            </button>
+            <button
+              onClick={() => onRespond(disaster._id, "unavailable")}
+              disabled={isResponding}
+              style={{ display: "flex", alignItems: "center", gap: "5px", padding: "6px 14px", borderRadius: "8px", border: "1px solid var(--border)", backgroundColor: "var(--bg)", color: "var(--secondary)", fontWeight: 600, fontSize: "12px", cursor: isResponding ? "not-allowed" : "pointer" }}
+            >
+              <XCircle size={13} /> Not Available
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── Main Component ────────────────────────────────────────────────────────────
+
 export const VolunteerDashboard: React.FC = () => {
   const { user } = useAuth();
   const [tasks,   setTasks]   = useState<ReliefRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [acting,  setActing]  = useState<string | null>(null);
+
+  // Disaster alerts
+  const [myDisasters,  setMyDisasters]  = useState<Disaster[]>([]);
+  const [myResponses,  setMyResponses]  = useState<VolunteerDisasterResponse[]>([]);
+  const [alertLoading, setAlertLoading] = useState(true);
+  const [responding,   setResponding]   = useState<string | null>(null); // disasterId
 
   const fetchTasks = useCallback(async () => {
     if (!user) return;
@@ -50,7 +149,47 @@ export const VolunteerDashboard: React.FC = () => {
     }
   }, [user]);
 
-  useEffect(() => { fetchTasks(); }, [fetchTasks]);
+  const fetchAlerts = useCallback(async () => {
+    if (!user) return;
+    setAlertLoading(true);
+    try {
+      const allActive = await disastersApi.getActive();
+      // Filter to disasters affecting this volunteer's district
+      const mine = user.district
+        ? allActive.filter(d => d.affectedDistrictNames.includes(user.district!))
+        : allActive;
+      setMyDisasters(mine);
+
+      // Fetch responses for all relevant disasters in parallel
+      const allResponses = await Promise.all(
+        mine.map(d => disastersApi.getVolunteerResponses(d._id).catch(() => [] as VolunteerDisasterResponse[]))
+      );
+      // Flatten and keep only the current user's responses
+      const flat = allResponses.flat().filter(r => r.volunteerId === user.id);
+      setMyResponses(flat);
+    } catch {
+      // fail gracefully
+    } finally {
+      setAlertLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => { fetchTasks(); fetchAlerts(); }, [fetchTasks, fetchAlerts]);
+
+  const handleRespond = async (disasterId: string, status: "available" | "unavailable") => {
+    setResponding(disasterId);
+    try {
+      const saved = await disastersApi.respondToDisaster(disasterId, status);
+      setMyResponses(prev => {
+        const without = prev.filter(r => r.disasterId !== disasterId);
+        return [...without, saved];
+      });
+    } catch {
+      alert("Failed to save your response. Please try again.");
+    } finally {
+      setResponding(null);
+    }
+  };
 
   const handleInTransit = async (id: string) => {
     setActing(id);
@@ -71,13 +210,17 @@ export const VolunteerDashboard: React.FC = () => {
   };
 
   // KPIs
-  const assigned    = tasks.filter(t => t.status === "volunteer_assigned").length;
-  const inTransit   = tasks.filter(t => t.status === "in_transit").length;
-  const todayMs     = 86400000;
-  const deliveredToday = tasks.filter(t => t.status === "delivered" && Date.now() - new Date(t.updatedAt).getTime() < todayMs).length;
-  const completed   = tasks.filter(t => t.status === "completed").length;
+  const assigned        = tasks.filter(t => t.status === "volunteer_assigned").length;
+  const inTransit       = tasks.filter(t => t.status === "in_transit").length;
+  const todayMs         = 86400000;
+  const deliveredToday  = tasks.filter(t => t.status === "delivered" && Date.now() - new Date(t.updatedAt).getTime() < todayMs).length;
+  const completed       = tasks.filter(t => t.status === "completed").length;
+  const activeTasks     = tasks.filter(t => ["volunteer_assigned", "in_transit"].includes(t.status));
 
-  const activeTasks = tasks.filter(t => ["volunteer_assigned", "in_transit"].includes(t.status));
+  // How many disaster alerts still need a response?
+  const pendingAlerts = myDisasters.filter(d =>
+    !myResponses.some(r => r.disasterId === d._id)
+  ).length;
 
   return (
     <PageContainer>
@@ -86,7 +229,7 @@ export const VolunteerDashboard: React.FC = () => {
         description={`Welcome, ${user?.name?.split(" ")[0] ?? "there"}. Your assigned delivery tasks are shown below.`}
         actions={
           <div style={{ display: "flex", gap: "8px" }}>
-            <button onClick={fetchTasks} disabled={loading}
+            <button onClick={() => { fetchTasks(); fetchAlerts(); }} disabled={loading}
               style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "8px", border: "1px solid var(--border)", backgroundColor: "var(--card-bg)", color: "var(--text-h)", fontWeight: 600, fontSize: "13px", cursor: "pointer" }}>
               <RefreshCw size={14} style={{ animation: loading ? "spin 1s linear infinite" : "none" }} /> Refresh
             </button>
@@ -98,13 +241,41 @@ export const VolunteerDashboard: React.FC = () => {
         }
       />
 
+      {/* ── Disaster Alerts ── */}
+      {!alertLoading && myDisasters.length > 0 && (
+        <div style={{ marginBottom: "24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+            <Bell size={15} style={{ color: "var(--warning)" }} />
+            <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-h)" }}>
+              Disaster Alerts
+            </span>
+            {pendingAlerts > 0 && (
+              <span style={{ padding: "1px 7px", borderRadius: "99px", backgroundColor: "rgba(245,158,11,0.15)", color: "var(--warning)", fontSize: "11px", fontWeight: 700 }}>
+                {pendingAlerts} need{pendingAlerts === 1 ? "s" : ""} your response
+              </span>
+            )}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {myDisasters.map(d => (
+              <DisasterAlertCard
+                key={d._id}
+                disaster={d}
+                myResponse={myResponses.find(r => r.disasterId === d._id)}
+                onRespond={handleRespond}
+                responding={responding}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* KPI strip */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "12px", marginBottom: "24px" }}>
         {[
-          { label: "Assigned",       value: loading ? "—" : String(assigned),      color: "#7c3aed",        bg: "rgba(124,58,237,0.1)" },
-          { label: "In Transit",     value: loading ? "—" : String(inTransit),     color: "var(--warning)", bg: "rgba(245,158,11,0.1)"  },
-          { label: "Delivered Today",value: loading ? "—" : String(deliveredToday),color: "var(--primary)", bg: "rgba(2,132,199,0.1)"   },
-          { label: "Completed",      value: loading ? "—" : String(completed),     color: "var(--success)", bg: "rgba(5,150,105,0.1)"   },
+          { label: "Assigned",        value: loading ? "—" : String(assigned),       color: "#7c3aed",        bg: "rgba(124,58,237,0.1)" },
+          { label: "In Transit",      value: loading ? "—" : String(inTransit),      color: "var(--warning)", bg: "rgba(245,158,11,0.1)"  },
+          { label: "Delivered Today", value: loading ? "—" : String(deliveredToday), color: "var(--primary)", bg: "rgba(2,132,199,0.1)"   },
+          { label: "Completed",       value: loading ? "—" : String(completed),      color: "var(--success)", bg: "rgba(5,150,105,0.1)"   },
         ].map(k => (
           <div key={k.label} style={{ backgroundColor: "var(--card-bg)", borderRadius: "12px", border: "1px solid var(--border)", padding: "16px 18px", display: "flex", flexDirection: "column", gap: "4px" }}>
             <div style={{ fontSize: "24px", fontWeight: 800, color: k.color }}>{k.value}</div>

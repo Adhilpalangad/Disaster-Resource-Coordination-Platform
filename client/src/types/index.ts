@@ -49,6 +49,19 @@ export interface Disaster {
   updatedAt: string;
 }
 
+export interface VolunteerDisasterResponse {
+  _id: string;
+  disasterId:     string;
+  volunteerId:    string;
+  volunteerName:  string;
+  volunteerEmail: string;
+  district:       string;
+  status:         "available" | "unavailable";
+  respondedAt:    string;
+  createdAt:      string;
+  updatedAt:      string;
+}
+
 // ─── Relief Request ───────────────────────────────────────────────────────────
 
 export type RequestCategory =
@@ -65,15 +78,19 @@ export type RequestCategory =
  */
 export type RequestStatus =
   | "pending"
+  | "pending_verification"
   | "location_routed"
   | "ngo_assigned"
   | "ngo_accepted"
   | "verified"
   | "resources_reserved"
   | "volunteer_assigned"
+  | "assigned"
+  | "in_progress"
   | "in_transit"
   | "delivered"
   | "completed"
+  | "resolved"
   | "rejected"
   | "escalated"
   | "closed";

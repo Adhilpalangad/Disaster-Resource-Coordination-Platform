@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import PageContainer from "../../components/PageContainer.js";
 import Card from "../../components/Card.js";
 import { supabase } from "../../lib/supabase.js";
+import { Eye, EyeOff } from "lucide-react";
 
 export const ResetPassword: React.FC = () => {
   const navigate = useNavigate();
@@ -12,6 +13,8 @@ export const ResetPassword: React.FC = () => {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [isValidSession, setIsValidSession] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     // Supabase redirects back with tokens in the URL hash/query string.
@@ -98,48 +101,68 @@ export const ResetPassword: React.FC = () => {
               <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
                 New Password <span style={{ color: "var(--danger)" }}>*</span>
               </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Min. 6 characters"
-                autoComplete="new-password"
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: "10px",
-                  border: "1px solid var(--border, #E2E8F0)",
-                  fontSize: "14px",
-                  outline: "none",
-                  boxSizing: "border-box",
-                  color: "var(--text-h)",
-                  backgroundColor: "var(--card-bg, #fff)",
-                }}
-              />
+              <div style={{ position: "relative" }}>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Min. 6 characters"
+                  autoComplete="new-password"
+                  style={{
+                    width: "100%",
+                    padding: "10px 40px 10px 12px",
+                    borderRadius: "10px",
+                    border: "1px solid var(--border, #E2E8F0)",
+                    fontSize: "14px",
+                    outline: "none",
+                    boxSizing: "border-box",
+                    color: "var(--text-h)",
+                    backgroundColor: "var(--card-bg, #fff)",
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--secondary)", padding: 0 }}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <div>
               <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
                 Confirm Password <span style={{ color: "var(--danger)" }}>*</span>
               </label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Re-enter your new password"
-                autoComplete="new-password"
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: "10px",
-                  border: "1px solid var(--border, #E2E8F0)",
-                  fontSize: "14px",
-                  outline: "none",
-                  boxSizing: "border-box",
-                  color: "var(--text-h)",
-                  backgroundColor: "var(--card-bg, #fff)",
-                }}
-              />
+              <div style={{ position: "relative" }}>
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter your new password"
+                  autoComplete="new-password"
+                  style={{
+                    width: "100%",
+                    padding: "10px 40px 10px 12px",
+                    borderRadius: "10px",
+                    border: "1px solid var(--border, #E2E8F0)",
+                    fontSize: "14px",
+                    outline: "none",
+                    boxSizing: "border-box",
+                    color: "var(--text-h)",
+                    backgroundColor: "var(--card-bg, #fff)",
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--secondary)", padding: 0 }}
+                  aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             {error && (

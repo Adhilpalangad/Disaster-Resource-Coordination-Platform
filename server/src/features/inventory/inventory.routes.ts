@@ -10,6 +10,8 @@ import {
   deleteItem,
   clearInventory,
 } from "./inventory.controller.js";
+import { validateBody } from "../../utils/validate.js";
+import { addInventoryItemSchema, updateInventoryItemSchema, bulkImportSchema } from "./inventory.validation.js";
 
 const router  = Router();
 
@@ -35,13 +37,13 @@ const upload = multer({
 // ── Special routes (before /:id) ──────────────────────────────────────────────
 router.get("/template",     downloadTemplate);
 router.post("/parse-excel", upload.single("file"), parseExcel);
-router.post("/bulk-import", bulkImport);
+router.post("/bulk-import", validateBody(bulkImportSchema), bulkImport);
 router.delete("/clear",     clearInventory);
 
 // ── Standard CRUD ─────────────────────────────────────────────────────────────
 router.get("/",     getInventory);
-router.post("/",    addItem);
-router.put("/:id",  updateItem);
+router.post("/",    validateBody(addInventoryItemSchema), addItem);
+router.put("/:id",  validateBody(updateInventoryItemSchema), updateItem);
 router.delete("/:id", deleteItem);
 
 export default router;
