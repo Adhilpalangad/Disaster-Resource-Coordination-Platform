@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { registerUser, syncUser, getMe, updateProfile, getVolunteers, seedAdmin } from './auth.controller.js';
+import { registerUser, syncUser, getMe, updateProfile, getUsers, updateUserById } from './auth.controller.js';
 import { requireAuth } from '../../middleware/auth.middleware.js';
 import { authLimiter } from '../../middleware/rateLimiter.js';
 
@@ -19,5 +19,8 @@ router.post('/register', authLimiter, registerUser);              // public — 
 router.post('/sync', requireAuth, syncUser);         // protected — sync metadata
 router.get('/me', requireAuth, getMe);               // protected — get current user
 router.put('/profile', requireAuth, updateProfile);  // protected — update profile
+router.get('/users', requireAuth, getUsers);         // protected — list all users
+router.put('/users/:id', requireAuth, updateUserById);// protected — update user details/role
 
 export default router;
+
