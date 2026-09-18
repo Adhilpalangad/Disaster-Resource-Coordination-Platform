@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Bell, CheckCheck, Trash2, X } from "lucide-react";
+import { Bell, CheckCheck, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useNotifications } from "../context/NotificationContext.js";
 import type { AppNotification } from "../services/notificationsApi.js";

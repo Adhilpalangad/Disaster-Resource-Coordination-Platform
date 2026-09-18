@@ -16,6 +16,8 @@ import Register from "./pages/public/Register.js";
 import ForgotPassword from "./pages/public/ForgotPassword.js";
 import ResetPassword from "./pages/public/ResetPassword.js";
 import NotFound from "./pages/public/NotFound.js";
+import PrivacyPolicy from "./pages/public/PrivacyPolicy.js";
+import TermsOfService from "./pages/public/TermsOfService.js";
 
 // ── Shared Authenticated Pages (all roles) ────────────────────────────────────
 import Notifications from "./pages/notifications/Notifications.js";
@@ -81,6 +83,8 @@ export function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/help" element={<HelpCenter />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
         </Route>
 
         {/* ── Citizen Routes ─────────────────────────────────────────────── */}

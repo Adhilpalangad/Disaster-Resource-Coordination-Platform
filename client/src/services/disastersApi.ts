@@ -1,5 +1,5 @@
 import api from "./api.js";
-import type { Disaster } from "../types/index.js";
+import type { Disaster, VolunteerDisasterResponse } from "../types/index.js";
 
 function extract<T>(res: { data: { data: T } }): T {
   return res.data.data;
@@ -30,4 +30,17 @@ export const disastersApi = {
     api.delete(`/disasters/${id}`).then((r) => r.data as { success: boolean; message: string }),
   seed:     () =>
     api.post("/disasters/seed").then((r) => r.data as { success: boolean; message: string }),
+
+  /** POST /disasters/:id/volunteer-response — volunteer opts in or out */
+  respondToDisaster: (disasterId: string, status: "available" | "unavailable") =>
+    api.post<{ data: VolunteerDisasterResponse }>(
+      `/disasters/${disasterId}/volunteer-response`,
+      { status }
+    ).then(extract),
+
+  /** GET /disasters/:id/volunteer-responses — all responses for a disaster */
+  getVolunteerResponses: (disasterId: string) =>
+    api.get<{ data: VolunteerDisasterResponse[] }>(
+      `/disasters/${disasterId}/volunteer-responses`
+    ).then(extract),
 };
