@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Upload, Download, Package, CheckCircle2, AlertCircle, Trash2,
   RefreshCw, Plus, X, Save, Edit2, FileSpreadsheet,
-  Utensils, Droplets, HeartPulse, Shirt, AlertTriangle, MoreHorizontal,
+  Utensils, Droplets, HeartPulse, Shirt, AlertTriangle,
   ChevronDown, Info,
 } from "lucide-react";
 import { useAuth }       from "../../context/AuthContext.js";
@@ -128,7 +128,7 @@ const PreviewTable: React.FC<{
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, idx) => {
+              {rows.map((row) => {
                 const catDisplay = getCatDisplay(row.category);
                 return (
                   <tr key={row._id} style={{ borderBottom: "1px solid var(--border)", backgroundColor: !row._valid ? "rgba(239,68,68,0.03)" : "transparent" }}>

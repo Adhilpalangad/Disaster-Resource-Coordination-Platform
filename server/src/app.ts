@@ -12,6 +12,9 @@ import ngoRouter          from "./features/ngos/ngo.routes.js";
 import notificationRouter from "./features/notifications/notification.routes.js";
 import authRouter         from "./features/auth/auth.routes.js";
 import inventoryRouter    from "./features/inventory/inventory.routes.js";
+import volunteerRouter    from "./features/volunteers/volunteer.routes.js";
+import shelterRouter      from "./features/shelters/shelter.routes.js";
+import dashboardRouter    from "./features/dashboard/dashboard.routes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -33,7 +36,10 @@ app.use("/api/disasters",     disasterRouter);
 app.use("/api/ngos",          ngoRouter);
 app.use("/api/notifications", notificationRouter);
 app.use("/api/auth",          authRouter);
-app.use("/api/inventory",    inventoryRouter);
+app.use("/api/inventory",     inventoryRouter);
+app.use("/api/volunteers",    volunteerRouter);
+app.use("/api/shelters",      shelterRouter);
+app.use("/api/dashboard",     dashboardRouter);
 
 app.get("/", (_req, res) => {
   res.json({ success: true, message: "Disaster Platform API v2 — request routing enabled" });

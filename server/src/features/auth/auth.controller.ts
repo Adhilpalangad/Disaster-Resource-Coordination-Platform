@@ -189,3 +189,61 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ success: false, message: 'Internal server error', error: String(error) });
   }
 };
+
+export const getUsers = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { search, role } = req.query;
+    const query: Record<string, unknown> = {};
+
+    if (role && typeof role === 'string' && role !== 'all') {
+      query.role = role.trim();
+    }
+
+    if (search && typeof search === 'string' && search.trim()) {
+      const regex = new RegExp(search.trim(), 'i');
+      query.$or = [
+        { name: regex },
+        { email: regex },
+        { phone: regex },
+        { district: regex },
+        { profession: regex },
+        { organizationName: regex },
+      ];
+    }
+
+    const users = await User.find(query).sort({ createdAt: -1 });
+    res.status(200).json({ success: true, data: users, count: users.length });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch users', error: String(error) });
+  }
+};
+
+export const updateUserById = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { name, role, phone, district, profession, organizationName } = req.body;
+
+    const user = await User.findByIdAndUpdate(
+      id,
+      {
+        ...(name && { name: name.trim() }),
+        ...(role && { role }),
+        ...(phone !== undefined && { phone: phone.trim() }),
+        ...(district !== undefined && { district: district.trim() }),
+        ...(profession !== undefined && { profession: profession.trim() }),
+        ...(organizationName !== undefined && { organizationName: organizationName.trim() }),
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
+    }
+
+    res.status(200).json({ success: true, message: 'User updated successfully', data: user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to update user', error: String(error) });
+  }
+};
+

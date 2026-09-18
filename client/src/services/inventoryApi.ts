@@ -30,10 +30,10 @@ export interface ParsedRow {
 function extract<T>(res: { data: { data: T } }): T { return res.data.data; }
 
 export const inventoryApi = {
-  /** Fetch all items for an NGO */
-  getAll: (ngoId: string) =>
+  /** Fetch items (all items globally if ngoId omitted) */
+  getAll: (ngoId?: string) =>
     api.get<{ data: InventoryItem[]; summary: { total: number; byCategory: Record<string, number> } }>(
-      `/inventory?ngoId=${ngoId}`
+      ngoId ? `/inventory?ngoId=${ngoId}` : "/inventory"
     ).then(r => r.data),
 
   /** Upload Excel → returns parsed rows (no DB write yet) */

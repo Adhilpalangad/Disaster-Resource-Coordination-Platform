@@ -34,12 +34,12 @@ function timeAgo(iso: string): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-const DELETEABLE_STATUSES: RequestStatus[] = ["pending", "pending_verification"];
+const DELETEABLE_STATUSES: RequestStatus[] = ["pending", "location_routed"];
 
-const STATUS_GROUPS = {
-  pending:  ["pending", "location_routed", "ngo_assigned", "pending_verification"] as RequestStatus[],
-  active:   ["ngo_accepted", "verified", "resources_reserved", "volunteer_assigned", "in_transit", "delivered", "assigned", "in_progress"] as RequestStatus[],
-  completed:["completed", "resolved"] as RequestStatus[],
+const STATUS_GROUPS: Record<string, RequestStatus[]> = {
+  pending:  ["pending", "location_routed", "ngo_assigned"],
+  active:   ["ngo_accepted", "verified", "resources_reserved", "volunteer_assigned", "in_transit", "delivered"],
+  completed:["completed", "closed"],
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
