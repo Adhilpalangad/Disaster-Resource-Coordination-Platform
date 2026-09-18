@@ -1,6 +1,9 @@
 import type { Request, Response } from "express";
 import { Disaster } from "./disaster.model.js";
 import type { IDisaster } from "./disaster.model.js";
+import { VolunteerDisasterResponse } from "./volunteer-response.model.js";
+import { User } from "../auth/user.model.js";
+import { notificationService } from "../notifications/notification.service.js";
 
 // ── Read ──────────────────────────────────────────────────────────────────────
 
@@ -68,6 +71,41 @@ export const createDisaster = async (req: Request, res: Response): Promise<void>
     });
 
     res.status(201).json({ success: true, data: doc });
+
+    // ── Fire-and-forget: notify all volunteers in affected districts ──────────
+    setImmediate(async () => {
+      try {
+        const names: string[] = affectedDistrictNames ?? [];
+        if (names.length === 0) return;
+
+        const volunteers = await User.find({ role: "volunteer", district: { $in: names } })
+          .select("_id name email district")
+          .lean();
+
+        if (volunteers.length === 0) {
+          console.log("[Disaster] No volunteers found in affected districts — skip notify");
+          return;
+        }
+
+        await notificationService.sendMany(
+          volunteers.map(v => ({
+            userId:    (v._id as { toString(): string }).toString(),
+            userEmail: v.email,
+            title:     `🚨 Disaster Alert: ${doc.title}`,
+            message:   `A ${doc.type} has been declared in ${names.join(", ")}. ` +
+                       `Are you available to serve as a volunteer? ` +
+                       `Please respond on your dashboard.`,
+            type:      "warning" as const,
+            category:  "system" as const,
+            link:      "/volunteer/dashboard",
+          }))
+        );
+
+        console.log(`[Disaster] Notified ${volunteers.length} volunteer(s) about "${doc.title}"`);
+      } catch (err) {
+        console.error("[Disaster] Volunteer notification failed:", err);
+      }
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: "Failed to create disaster", error: String(err) });
   }
@@ -119,6 +157,64 @@ export const deleteDisaster = async (req: Request, res: Response): Promise<void>
     res.json({ success: true, message: "Disaster deleted" });
   } catch (err) {
     res.status(500).json({ success: false, message: "Failed to delete disaster", error: String(err) });
+  }
+};
+
+// ── Volunteer Response ────────────────────────────────────────────────────────
+
+/** POST /api/disasters/:id/volunteer-response
+ *  Body: { status: "available" | "unavailable" }
+ *  Volunteer records (or updates) their opt-in status for a disaster. */
+export const respondToDisaster = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, message: "Unauthorized" });
+      return;
+    }
+    const { status } = req.body as { status: "available" | "unavailable" };
+    if (!["available", "unavailable"].includes(status)) {
+      res.status(400).json({ success: false, message: "status must be 'available' or 'unavailable'" });
+      return;
+    }
+
+    const disaster = await Disaster.findById(req.params.id);
+    if (!disaster) {
+      res.status(404).json({ success: false, message: "Disaster not found" });
+      return;
+    }
+
+    const volunteerId = (req.user._id as { toString(): string }).toString();
+
+    const response = await VolunteerDisasterResponse.findOneAndUpdate(
+      { disasterId: req.params.id, volunteerId },
+      {
+        disasterId:     req.params.id,
+        volunteerId,
+        volunteerName:  req.user.name,
+        volunteerEmail: req.user.email,
+        district:       req.user.district ?? "",
+        status,
+        respondedAt:    new Date(),
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    res.json({ success: true, data: response });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Failed to save response", error: String(err) });
+  }
+};
+
+/** GET /api/disasters/:id/volunteer-responses
+ *  Returns all volunteer opt-in responses for a given disaster. */
+export const getVolunteerResponses = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const responses = await VolunteerDisasterResponse.find({ disasterId: req.params.id })
+      .sort({ respondedAt: -1 })
+      .lean();
+    res.json({ success: true, data: responses });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Failed to fetch responses", error: String(err) });
   }
 };
 

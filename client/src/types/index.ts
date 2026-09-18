@@ -49,6 +49,19 @@ export interface Disaster {
   updatedAt: string;
 }
 
+export interface VolunteerDisasterResponse {
+  _id: string;
+  disasterId:     string;
+  volunteerId:    string;
+  volunteerName:  string;
+  volunteerEmail: string;
+  district:       string;
+  status:         "available" | "unavailable";
+  respondedAt:    string;
+  createdAt:      string;
+  updatedAt:      string;
+}
+
 // ─── Relief Request ───────────────────────────────────────────────────────────
 
 export type RequestCategory =

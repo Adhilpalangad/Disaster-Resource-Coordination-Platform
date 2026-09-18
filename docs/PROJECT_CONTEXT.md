@@ -453,7 +453,7 @@ Do not change folder structure.
 Do not remove existing functionality.
 
 Generate production-quality code.
-
+ 
 When implementing a feature
 
 1. Explain your approach.

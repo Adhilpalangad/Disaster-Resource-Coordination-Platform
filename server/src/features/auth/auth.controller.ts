@@ -160,9 +160,103 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
 
     const doc = user.toJSON ? user.toJSON() : user;
     const id  = (user._id as { toString(): string }).toString();
+
     res.json({ success: true, message: 'Profile updated', data: { ...doc, id } });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Update failed', error: String(error) });
+  }
+};
+
+// GET /api/auth/volunteers?district=Kottayam — volunteers in a given district
+export const getVolunteers = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { district } = req.query;
+    const filter: Record<string, unknown> = { role: "volunteer" };
+    if (district) filter.district = district;
+
+    const volunteers = await User.find(filter)
+      .select("_id name email phone district profession")
+      .sort({ name: 1 })
+      .lean();
+
+    // Expose _id as id for client consistency
+    const data = volunteers.map(v => ({
+      ...v,
+      id: (v._id as { toString(): string }).toString(),
+    }));
+
+    res.json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch volunteers", error: String(error) });
+  }
+};
+
+// ── Predefined admin credentials ──────────────────────────────────────────────
+// These are fixed demo credentials. Override via env vars for production.
+export const ADMIN_EMAIL    = process.env.ADMIN_SEED_EMAIL    ?? "admin@kdrp.in";
+export const ADMIN_PASSWORD = process.env.ADMIN_SEED_PASSWORD ?? "Admin@2024";
+const ADMIN_NAME            = "Platform Admin";
+
+/** POST /api/auth/seed-admin (public)
+ *  Creates the predefined admin account if it doesn't already exist.
+ *  Safe to call multiple times — fully idempotent. */
+export const seedAdmin = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    // Already in MongoDB? Nothing to do.
+    const existing = await User.findOne({ email: ADMIN_EMAIL });
+    if (existing) {
+      res.json({ success: true, message: "Admin account already exists", email: ADMIN_EMAIL });
+      return;
+    }
+
+    const adminClient = getAdminClient();
+    let supabaseId: string;
+
+    const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
+      email:         ADMIN_EMAIL,
+      password:      ADMIN_PASSWORD,
+      email_confirm: true,
+      user_metadata: { name: ADMIN_NAME, role: "admin" },
+    });
+
+    if (authError) {
+      if (
+        authError.message.toLowerCase().includes("already been registered") ||
+        (authError as { status?: number }).status === 422
+      ) {
+        // Exists in Supabase but not MongoDB — locate and sync
+        const { data: listData } = await adminClient.auth.admin.listUsers();
+        const sbUser = (listData?.users ?? []).find(
+          (u: { email?: string; id: string }) => u.email === ADMIN_EMAIL
+        );
+        if (!sbUser) {
+          res.status(400).json({ success: false, message: "Could not locate admin in Supabase." });
+          return;
+        }
+        supabaseId = sbUser.id;
+      } else {
+        res.status(400).json({ success: false, message: authError.message });
+        return;
+      }
+    } else {
+      supabaseId = authData.user.id;
+    }
+
+    // Upsert MongoDB record
+    await User.findOneAndUpdate(
+      { supabaseId },
+      { supabaseId, name: ADMIN_NAME, email: ADMIN_EMAIL, role: "admin" },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    res.status(201).json({ success: true, message: "Admin account created", email: ADMIN_EMAIL });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (msg.includes("SUPABASE_SERVICE_ROLE_KEY")) {
+      res.status(500).json({ success: false, message: "Server misconfiguration: SUPABASE_SERVICE_ROLE_KEY is not set." });
+    } else {
+      res.status(500).json({ success: false, message: "Seed failed", error: msg });
+    }
   }
 };
 

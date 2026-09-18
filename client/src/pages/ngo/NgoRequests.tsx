@@ -2,12 +2,16 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   CheckCircle, XCircle, RefreshCw, MapPin, Phone, Clock, User,
   AlertCircle, Package, Utensils, Droplets, HeartPulse, Home,
-  AlertTriangle, Truck, Users, ChevronDown, UserCheck,
+  AlertTriangle, Truck, Users, ChevronDown, UserCheck, Zap,
 } from "lucide-react";
-import { useAuth }      from "../../context/AuthContext.js";
-import { requestsApi }  from "../../services/requestsApi.js";
-import { ngoApi }       from "../../services/ngoApi.js";
-import type { ReliefRequest, UrgencyLevel, RequestCategory } from "../../types/index.js";
+import { useAuth }       from "../../context/AuthContext.js";
+import { requestsApi }   from "../../services/requestsApi.js";
+import { disastersApi }  from "../../services/disastersApi.js";
+import api               from "../../services/api.js";
+import type {
+  ReliefRequest, UrgencyLevel, RequestCategory,
+  Disaster, VolunteerDisasterResponse,
+} from "../../types/index.js";
 import PageContainer  from "../../components/PageContainer.js";
 import PageHeader     from "../../components/PageHeader.js";
 import StatusBadge    from "../../components/StatusBadge.js";
@@ -20,11 +24,7 @@ const CATEGORY_ICONS: Record<RequestCategory, React.ElementType> = {
   food: Utensils, water: Droplets, medicine: HeartPulse,
   shelter: Home, rescue: AlertTriangle, transportation: Truck, other: Package,
 };
-const DEMO_VOLUNTEERS = [
-  { id: "demo-volunteer-001", name: "Sneha Pillai",  phone: "+91 98765 22222" },
-  { id: "vol-field-002",      name: "Arun Kumar",    phone: "+91 90001 10002" },
-  { id: "vol-field-003",      name: "Priya Suresh",  phone: "+91 90001 10003" },
-];
+interface Volunteer { id: string; name: string; email: string; phone?: string; profession?: string; district?: string; }
 
 type TabId = "incoming" | "processing" | "dispatched" | "closed";
 const TABS: { id: TabId; label: string; statuses: string[] }[] = [
@@ -92,92 +92,171 @@ const RejectModal: React.FC<{
 // ── Assign Volunteer Modal ────────────────────────────────────────────────────
 const AssignVolunteerModal: React.FC<{
   requestId: string;
+  district?: string;
+  token: string | null;
   onConfirm: (id: string, vid: string, name: string, eta: string) => Promise<void>;
   onClose: () => void;
-}> = ({ requestId, onConfirm, onClose }) => {
-  const [selectedId, setSelectedId] = useState(DEMO_VOLUNTEERS[0].id);
-  const [customName, setCustomName] = useState("");
-  const [useCustom,  setUseCustom]  = useState(false);
-  const [eta,        setEta]        = useState("");
-  const [busy,       setBusy]       = useState(false);
+}> = ({ requestId, district, token, onConfirm, onClose }) => {
+  const [volunteers,  setVolunteers]  = useState<Volunteer[]>([]);
+  const [loadingVols, setLoadingVols] = useState(true);
+  const [selectedId,  setSelectedId]  = useState("");
+  const [eta,         setEta]         = useState("");
+  const [busy,        setBusy]        = useState(false);
 
-  const finalName = useCustom ? customName.trim() : (DEMO_VOLUNTEERS.find(v => v.id === selectedId)?.name ?? "");
-  const finalId   = useCustom ? ("vol-" + Date.now()) : selectedId;
+  // Disaster availability state
+  const [activeDisaster,  setActiveDisaster]  = useState<Disaster | null>(null);
+  const [availableIds,    setAvailableIds]    = useState<Set<string>>(new Set());
+  const [loadingDisaster, setLoadingDisaster] = useState(true);
+
+  React.useEffect(() => {
+    const load = async () => {
+      setLoadingVols(true);
+      setLoadingDisaster(true);
+      try {
+        // 1. Load volunteers in district
+        const params = district ? `?district=${encodeURIComponent(district)}` : "";
+        const res = await api.get(`/auth/volunteers${params}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const vols: Volunteer[] = res.data.data ?? [];
+        setVolunteers(vols);
+        if (vols.length > 0) setSelectedId(vols[0].id);
+
+        // 2. Find active disasters for this district
+        const allActive: Disaster[] = await disastersApi.getActive().catch(() => []);
+        const districtDisasters = district
+          ? allActive.filter(d => d.affectedDistrictNames.includes(district))
+          : allActive;
+
+        if (districtDisasters.length > 0) {
+          // Use the most recent active disaster
+          const disaster = districtDisasters[0];
+          setActiveDisaster(disaster);
+
+          // 3. Fetch volunteer responses for that disaster
+          const responses: VolunteerDisasterResponse[] = await disastersApi
+            .getVolunteerResponses(disaster._id)
+            .catch(() => []);
+          const available = new Set(
+            responses.filter(r => r.status === "available").map(r => r.volunteerId)
+          );
+          setAvailableIds(available);
+        }
+      } catch {
+        setVolunteers([]);
+      } finally {
+        setLoadingVols(false);
+        setLoadingDisaster(false);
+      }
+    };
+    load();
+  }, [district, token]);
+
+  const selected = volunteers.find(v => v.id === selectedId);
+  const loading  = loadingVols || loadingDisaster;
+
+  // Split volunteers into available vs others when there's an active disaster
+  const availableVols = activeDisaster ? volunteers.filter(v => availableIds.has(v.id)) : [];
+  const otherVols     = activeDisaster ? volunteers.filter(v => !availableIds.has(v.id)) : volunteers;
+
+  const renderVolCard = (v: Volunteer, showBadge: boolean) => (
+    <label
+      key={v.id}
+      style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", borderRadius: "9px", border: `1px solid ${selectedId === v.id ? "#7c3aed" : "var(--border)"}`, backgroundColor: selectedId === v.id ? "rgba(124,58,237,0.06)" : "var(--bg)", cursor: "pointer" }}
+    >
+      <input type="radio" name="vol" checked={selectedId === v.id} onChange={() => setSelectedId(v.id)} style={{ accentColor: "#7c3aed", flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--text-h)" }}>{v.name}</p>
+        <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--secondary)" }}>
+          {v.profession ? `${v.profession} · ` : ""}{v.phone ?? v.email}
+        </p>
+      </div>
+      {showBadge && (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "2px 8px", borderRadius: "99px", fontSize: "10px", fontWeight: 700, backgroundColor: "rgba(5,150,105,0.12)", color: "var(--success)", border: "1px solid rgba(5,150,105,0.3)", whiteSpace: "nowrap", flexShrink: 0 }}>
+          <Zap size={9} /> Available
+        </span>
+      )}
+    </label>
+  );
 
   return (
     <div
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}
     >
-      <div style={{ backgroundColor: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "16px", padding: "28px", maxWidth: "460px", width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.18)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
+      <div style={{ backgroundColor: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "16px", padding: "28px", maxWidth: "500px", width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.18)", maxHeight: "85vh", overflowY: "auto" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
           <UserCheck size={20} color="#7c3aed" />
           <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--text-h)" }}>Assign Volunteer</h3>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          {!useCustom ? (
-            <div>
-              <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--secondary)", marginBottom: "8px" }}>Select Volunteer</label>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                {DEMO_VOLUNTEERS.map(v => (
-                  <label
-                    key={v.id}
-                    style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", borderRadius: "9px", border: `1px solid ${selectedId === v.id ? "#7c3aed" : "var(--border)"}`, backgroundColor: selectedId === v.id ? "rgba(124,58,237,0.06)" : "var(--bg)", cursor: "pointer" }}
-                  >
-                    <input type="radio" name="vol" checked={selectedId === v.id} onChange={() => setSelectedId(v.id)} style={{ accentColor: "#7c3aed", flexShrink: 0 }} />
-                    <div style={{ flex: 1 }}>
-                      <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--text-h)" }}>{v.name}</p>
-                      <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--secondary)" }}>{v.phone}</p>
-                    </div>
-                    {v.id === "demo-volunteer-001" && (
-                      <span style={{ fontSize: "10px", fontWeight: 700, padding: "2px 6px", borderRadius: "4px", backgroundColor: "rgba(5,150,105,0.1)", color: "var(--success)" }}>LINKED</span>
-                    )}
-                  </label>
-                ))}
-              </div>
-              <button
-                onClick={() => setUseCustom(true)}
-                style={{ marginTop: "8px", background: "none", border: "none", fontSize: "12px", color: "var(--secondary)", cursor: "pointer", padding: 0, textDecoration: "underline" }}
-              >
-                Enter custom name
-              </button>
-            </div>
-          ) : (
-            <div>
-              <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--secondary)", marginBottom: "6px" }}>Custom Volunteer Name</label>
-              <input
-                type="text"
-                value={customName}
-                onChange={e => setCustomName(e.target.value)}
-                placeholder="Full name"
-                style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid var(--border)", fontSize: "13px", boxSizing: "border-box", backgroundColor: "var(--bg)", color: "var(--text-h)" }}
-              />
-              <button
-                onClick={() => { setUseCustom(false); setCustomName(""); }}
-                style={{ marginTop: "6px", background: "none", border: "none", fontSize: "12px", color: "var(--secondary)", cursor: "pointer", padding: 0, textDecoration: "underline" }}
-              >
-                Choose from list
-              </button>
-            </div>
-          )}
-          <div>
-            <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--secondary)", marginBottom: "6px" }}>Estimated Arrival (optional)</label>
-            <input
-              type="datetime-local"
-              value={eta}
-              onChange={e => setEta(e.target.value)}
-              style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid var(--border)", fontSize: "13px", boxSizing: "border-box", backgroundColor: "var(--bg)", color: "var(--text-h)" }}
-            />
+        {district && (
+          <p style={{ margin: "0 0 16px", fontSize: "12px", color: "var(--secondary)" }}>
+            Showing volunteers registered in <strong>{district}</strong> district
+          </p>
+        )}
+
+        {/* Active disaster context badge */}
+        {!loadingDisaster && activeDisaster && (
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 12px", borderRadius: "8px", backgroundColor: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", marginBottom: "14px", fontSize: "12px", color: "var(--warning)", fontWeight: 500 }}>
+            <AlertTriangle size={13} />
+            Availability based on: <strong>{activeDisaster.title}</strong>
           </div>
+        )}
+
+        {loading ? (
+          <div style={{ padding: "32px 0", textAlign: "center", fontSize: "13px", color: "var(--secondary)" }}>Loading volunteers…</div>
+        ) : volunteers.length === 0 ? (
+          <div style={{ padding: "20px", borderRadius: "10px", backgroundColor: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.25)", marginBottom: "16px", textAlign: "center" }}>
+            <p style={{ margin: "0 0 4px", fontSize: "13px", fontWeight: 600, color: "var(--warning)" }}>No volunteers found</p>
+            <p style={{ margin: 0, fontSize: "12px", color: "var(--secondary)" }}>
+              No volunteers are registered in {district ?? "this district"} yet.
+            </p>
+          </div>
+        ) : activeDisaster ? (
+          /* Categorised view when there's an active disaster */
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "16px", maxHeight: "340px", overflowY: "auto" }}>
+            {availableVols.length > 0 && (
+              <>
+                <p style={{ margin: "0 0 6px", fontSize: "11px", fontWeight: 700, color: "var(--success)", textTransform: "uppercase", letterSpacing: "0.4px", display: "flex", alignItems: "center", gap: "5px" }}>
+                  <Zap size={11} /> Available for this Disaster ({availableVols.length})
+                </p>
+                {availableVols.map(v => renderVolCard(v, true))}
+              </>
+            )}
+            {otherVols.length > 0 && (
+              <>
+                <p style={{ margin: `${availableVols.length > 0 ? "14px" : "0"} 0 6px`, fontSize: "11px", fontWeight: 700, color: "var(--secondary)", textTransform: "uppercase", letterSpacing: "0.4px" }}>
+                  Others ({otherVols.length})
+                </p>
+                {otherVols.map(v => renderVolCard(v, false))}
+              </>
+            )}
+          </div>
+        ) : (
+          /* Plain list when no active disaster */
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px", maxHeight: "300px", overflowY: "auto" }}>
+            {volunteers.map(v => renderVolCard(v, false))}
+          </div>
+        )}
+
+        <div style={{ marginBottom: "16px" }}>
+          <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--secondary)", marginBottom: "6px" }}>Estimated Arrival (optional)</label>
+          <input
+            type="datetime-local"
+            value={eta}
+            onChange={e => setEta(e.target.value)}
+            style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid var(--border)", fontSize: "13px", boxSizing: "border-box", backgroundColor: "var(--bg)", color: "var(--text-h)" }}
+          />
         </div>
-        <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+
+        <div style={{ display: "flex", gap: "10px" }}>
           <button onClick={onClose} style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid var(--border)", backgroundColor: "var(--bg)", color: "var(--text-h)", fontWeight: 600, fontSize: "13px", cursor: "pointer" }}>
             Cancel
           </button>
           <button
-            onClick={async () => { if (!finalName) return; setBusy(true); await onConfirm(requestId, finalId, finalName, eta); setBusy(false); }}
-            disabled={!finalName || busy}
-            style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "none", backgroundColor: !finalName || busy ? "var(--secondary)" : "#7c3aed", color: "#fff", fontWeight: 700, fontSize: "13px", cursor: !finalName || busy ? "not-allowed" : "pointer" }}
+            onClick={async () => { if (!selected) return; setBusy(true); await onConfirm(requestId, selected.id, selected.name, eta); setBusy(false); }}
+            disabled={!selected || busy || loading}
+            style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "none", backgroundColor: !selected || busy || loading ? "var(--secondary)" : "#7c3aed", color: "#fff", fontWeight: 700, fontSize: "13px", cursor: !selected || busy || loading ? "not-allowed" : "pointer" }}
           >
             {busy ? "Assigning…" : "Assign Volunteer"}
           </button>
@@ -189,7 +268,7 @@ const AssignVolunteerModal: React.FC<{
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export const NgoRequests: React.FC = () => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
 
   const [allRequests,   setAllRequests]   = useState<ReliefRequest[]>([]);
   const [loading,       setLoading]       = useState(true);
@@ -204,17 +283,8 @@ export const NgoRequests: React.FC = () => {
     if (!user) return;
     setLoading(true); setError("");
     try {
-      // Get this NGO's MongoDB profile _id, then filter requests to only ours
-      let ngoProfileId: string | undefined;
-      try {
-        const profile = await ngoApi.getMyProfile(user.id);
-        ngoProfileId = profile._id;
-      } catch {
-        // No profile yet — show empty state, not everyone else's requests
-      }
-      const requests = await requestsApi.getAll(
-        ngoProfileId ? { assignedNGO: ngoProfileId } : { assignedNGO: "__none__" }
-      );
+      // user.id is stored directly as assignedNGO by the routing engine
+      const requests = await requestsApi.getAll({ assignedNGO: user.id });
       setAllRequests(requests);
     } catch {
       setError("Could not load requests. Make sure the server is running.");
@@ -478,7 +548,13 @@ export const NgoRequests: React.FC = () => {
         <RejectModal requestId={rejectTarget} onConfirm={handleReject} onClose={() => setRejectTarget(null)} />
       )}
       {assignTarget && (
-        <AssignVolunteerModal requestId={assignTarget} onConfirm={handleAssign} onClose={() => setAssignTarget(null)} />
+        <AssignVolunteerModal
+          requestId={assignTarget}
+          district={user?.district}
+          token={token}
+          onConfirm={handleAssign}
+          onClose={() => setAssignTarget(null)}
+        />
       )}
     </PageContainer>
   );
