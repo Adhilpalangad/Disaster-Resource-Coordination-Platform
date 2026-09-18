@@ -30,6 +30,15 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    // SECURITY TODO: this endpoint is public and does not restrict `role` to an
+    // allow-list — the client UI (Register.tsx) hides "admin" as an option, but
+    // nothing server-side stops a direct POST with role: "admin" from succeeding,
+    // since the Mongoose schema enum also permits "admin". There is currently no
+    // other in-app path to create/promote an admin account. Fix: restrict `role`
+    // here to ["citizen", "ngo", "volunteer"], and provision admin accounts only
+    // through a trusted/internal path (e.g. a separate authenticated admin-only
+    // endpoint or direct DB provisioning).
+
     console.log(`[${new Date().toISOString()}] Starting registration for ${email}`);
     const adminClient = getAdminClient();
 

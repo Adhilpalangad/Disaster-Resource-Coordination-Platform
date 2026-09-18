@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Outlet, NavLink, Link } from "react-router-dom";
-import { Shield, Menu, X } from "lucide-react";
+import { Outlet, NavLink, Link, useNavigate } from "react-router-dom";
+import { Shield, Menu, X, LayoutDashboard } from "lucide-react";
 import Footer from "./Footer.js";
 import ThemeToggle from "../components/ThemeToggle.js";
+import ProfileDropdown from "../components/ProfileDropdown.js";
+import { useAuth } from "../context/AuthContext.js";
 
 const NAV_LINKS = [
   { to: "/home", label: "Home" },
@@ -13,6 +15,8 @@ const NAV_LINKS = [
 export const PublicLayout: React.FC = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { isAuthenticated, getDashboardPath, logout } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -88,40 +92,68 @@ export const PublicLayout: React.FC = () => {
         {/* Desktop Actions */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }} className="public-nav-desktop">
           <ThemeToggle />
-          <Link
-            to="/login"
-            style={{
-              fontSize: "14px",
-              fontWeight: 600,
-              color: "var(--text-h)",
-              textDecoration: "none",
-              padding: "7px 16px",
-              borderRadius: "9px",
-              border: "1px solid var(--border)",
-              transition: "border-color 0.15s, background-color 0.15s",
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--primary)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--border)"; }}
-          >
-            Sign In
-          </Link>
-          <Link
-            to="/register"
-            style={{
-              fontSize: "14px",
-              fontWeight: 600,
-              color: "#fff",
-              backgroundColor: "var(--primary)",
-              textDecoration: "none",
-              padding: "7px 16px",
-              borderRadius: "9px",
-              transition: "background-color 0.15s",
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "var(--primary-hover)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "var(--primary)"; }}
-          >
-            Get Started
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <Link
+                to={getDashboardPath()}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  color: "var(--text-h)",
+                  textDecoration: "none",
+                  padding: "7px 16px",
+                  borderRadius: "9px",
+                  border: "1px solid var(--border)",
+                  transition: "border-color 0.15s, background-color 0.15s",
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--primary)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--border)"; }}
+              >
+                <LayoutDashboard size={15} /> Dashboard
+              </Link>
+              <ProfileDropdown />
+            </>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  color: "var(--text-h)",
+                  textDecoration: "none",
+                  padding: "7px 16px",
+                  borderRadius: "9px",
+                  border: "1px solid var(--border)",
+                  transition: "border-color 0.15s, background-color 0.15s",
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--primary)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--border)"; }}
+              >
+                Sign In
+              </Link>
+              <Link
+                to="/register"
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  color: "#fff",
+                  backgroundColor: "var(--primary)",
+                  textDecoration: "none",
+                  padding: "7px 16px",
+                  borderRadius: "9px",
+                  transition: "background-color 0.15s",
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "var(--primary-hover)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "var(--primary)"; }}
+              >
+                Get Started
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile hamburger */}
@@ -170,22 +202,40 @@ export const PublicLayout: React.FC = () => {
               {l.label}
             </NavLink>
           ))}
-          <div style={{ display: "flex", gap: "10px", paddingTop: "8px" }}>
-            <Link
-              to="/login"
-              onClick={() => setMobileOpen(false)}
-              style={{ flex: 1, textAlign: "center", padding: "10px", borderRadius: "9px", border: "1px solid var(--border)", color: "var(--text-h)", fontWeight: 600, fontSize: "14px", textDecoration: "none" }}
-            >
-              Sign In
-            </Link>
-            <Link
-              to="/register"
-              onClick={() => setMobileOpen(false)}
-              style={{ flex: 1, textAlign: "center", padding: "10px", borderRadius: "9px", backgroundColor: "var(--primary)", color: "#fff", fontWeight: 600, fontSize: "14px", textDecoration: "none" }}
-            >
-              Get Started
-            </Link>
-          </div>
+          {isAuthenticated ? (
+            <div style={{ display: "flex", gap: "10px", paddingTop: "8px" }}>
+              <Link
+                to={getDashboardPath()}
+                onClick={() => setMobileOpen(false)}
+                style={{ flex: 1, textAlign: "center", padding: "10px", borderRadius: "9px", border: "1px solid var(--border)", color: "var(--text-h)", fontWeight: 600, fontSize: "14px", textDecoration: "none" }}
+              >
+                Dashboard
+              </Link>
+              <button
+                onClick={() => { setMobileOpen(false); logout(); navigate("/login"); }}
+                style={{ flex: 1, textAlign: "center", padding: "10px", borderRadius: "9px", border: "none", backgroundColor: "var(--danger)", color: "#fff", fontWeight: 600, fontSize: "14px", cursor: "pointer" }}
+              >
+                Log Out
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: "10px", paddingTop: "8px" }}>
+              <Link
+                to="/login"
+                onClick={() => setMobileOpen(false)}
+                style={{ flex: 1, textAlign: "center", padding: "10px", borderRadius: "9px", border: "1px solid var(--border)", color: "var(--text-h)", fontWeight: 600, fontSize: "14px", textDecoration: "none" }}
+              >
+                Sign In
+              </Link>
+              <Link
+                to="/register"
+                onClick={() => setMobileOpen(false)}
+                style={{ flex: 1, textAlign: "center", padding: "10px", borderRadius: "9px", backgroundColor: "var(--primary)", color: "#fff", fontWeight: 600, fontSize: "14px", textDecoration: "none" }}
+              >
+                Get Started
+              </Link>
+            </div>
+          )}
         </div>
       )}
 
