@@ -75,32 +75,40 @@ function buildEmailHtml(title: string, message: string, link?: string, type: str
 </html>`;
 }
 
-// ── Demo user email map ───────────────────────────────────────────────────────
-// In production, replace with a real DB lookup.
-// In demo mode, NOTIFY_TEST_EMAIL overrides all recipients.
+// ── Email resolution ──────────────────────────────────────────────────────────
+// getRealEmail: returns the recipient's real email for DB storage.
+// In production pass userEmail directly; fallback is the demo map.
+// getSendTarget: applies NOTIFY_TEST_EMAIL override so all emails in dev
+// route to a single test inbox regardless of the real address.
 
-function resolveEmail(userId: string): string {
-  if (process.env.NOTIFY_TEST_EMAIL) return process.env.NOTIFY_TEST_EMAIL;
-  // Fallback map for known demo accounts
-  const map: Record<string, string> = {
-    "demo-citizen-001":   "citizen@demo.local",
-    "demo-ngo-001":       "ngo@demo.local",
-    "demo-volunteer-001": "volunteer@demo.local",
-    "demo-admin-001":     "admin@demo.local",
-  };
-  return map[userId] ?? `${userId}@demo.local`;
+const DEMO_MAP: Record<string, string> = {
+  "demo-citizen-001":   "citizen@demo.local",
+  "demo-ngo-001":       "ngo@demo.local",
+  "demo-volunteer-001": "volunteer@demo.local",
+  "demo-admin-001":     "admin@demo.local",
+};
+
+function getRealEmail(userId: string, override?: string): string {
+  return override ?? DEMO_MAP[userId] ?? `${userId}@demo.local`;
+}
+
+function getSendTarget(realEmail: string): string {
+  return process.env.NOTIFY_TEST_EMAIL ?? realEmail;
 }
 
 // ── Public send API ───────────────────────────────────────────────────────────
 
 export interface SendParams {
-  userId:     string;
-  title:      string;
-  message:    string;
-  type?:      "info" | "success" | "warning" | "danger";
-  category?:  "request" | "assignment" | "system";
-  requestId?: string;
-  link?:      string;
+  userId:      string;
+  /** Real email for the recipient — stored in DB and used for actual sending
+   *  (overridden by NOTIFY_TEST_EMAIL in dev/test mode). */
+  userEmail?:  string;
+  title:       string;
+  message:     string;
+  type?:       "info" | "success" | "warning" | "danger";
+  category?:   "request" | "assignment" | "system";
+  requestId?:  string;
+  link?:       string;
 }
 
 export const notificationService = {
@@ -111,20 +119,22 @@ export const notificationService = {
       requestId, link,
     } = params;
 
-    const userEmail = resolveEmail(userId);
+    const realEmail = getRealEmail(userId, params.userEmail);
+    const sendTo    = getSendTarget(realEmail);
 
-    // 1. Save in-app notification
+    // 1. Send email (failure is non-fatal)
     let emailSent = false;
     try {
-      await sendEmail(userEmail, title, message, link, type);
+      await sendEmail(sendTo, title, message, link, type);
       emailSent = true;
     } catch (err) {
       console.error(`[Notify] Email failed for ${userId}:`, err);
     }
 
+    // 2. Persist in-app notification
     try {
       await Notification.create({
-        userId, userEmail, title, message,
+        userId, userEmail: realEmail, title, message,
         type, category,
         ...(requestId && { requestId }),
         ...(link      && { link }),
