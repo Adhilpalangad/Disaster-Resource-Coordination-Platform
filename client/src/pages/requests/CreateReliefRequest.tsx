@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   CheckCircle, AlertCircle, Upload, ChevronRight, ChevronLeft,
   Utensils, Droplets, HeartPulse, Home, AlertTriangle, Truck, Package,
-  Users, Phone, User, MapPin,
+  Users, Phone, User,
 } from "lucide-react";
 import { useAuth }         from "../../context/AuthContext.js";
 import { requestsApi }     from "../../services/requestsApi.js";

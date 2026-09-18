@@ -65,15 +65,19 @@ export type RequestCategory =
  */
 export type RequestStatus =
   | "pending"
+  | "pending_verification"
   | "location_routed"
   | "ngo_assigned"
   | "ngo_accepted"
   | "verified"
   | "resources_reserved"
   | "volunteer_assigned"
+  | "assigned"
+  | "in_progress"
   | "in_transit"
   | "delivered"
   | "completed"
+  | "resolved"
   | "rejected"
   | "escalated"
   | "closed";
