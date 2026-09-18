@@ -165,7 +165,10 @@ export const deleteDisaster = async (req: Request, res: Response): Promise<void>
 /** POST /api/disasters/:id/volunteer-response
  *  Body: { status: "available" | "unavailable" }
  *  Volunteer records (or updates) their opt-in status for a disaster. */
-export const respondToDisaster = async (req: Request, res: Response): Promise<void> => {
+export const respondToDisaster = async (
+  req: Request<{ id: string }>,
+  res: Response
+): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ success: false, message: "Unauthorized" });
@@ -207,7 +210,10 @@ export const respondToDisaster = async (req: Request, res: Response): Promise<vo
 
 /** GET /api/disasters/:id/volunteer-responses
  *  Returns all volunteer opt-in responses for a given disaster. */
-export const getVolunteerResponses = async (req: Request, res: Response): Promise<void> => {
+export const getVolunteerResponses = async (
+  req: Request<{ id: string }>,
+  res: Response
+): Promise<void> => {
   try {
     const responses = await VolunteerDisasterResponse.find({ disasterId: req.params.id })
       .sort({ respondedAt: -1 })

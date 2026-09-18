@@ -9,7 +9,7 @@
  *  5. If no eligible NGO found — escalate to admin ("escalated")
  */
 
-import { ReliefRequest, type IRequestLocation } from "./request.model.js";
+import { ReliefRequest, type IRequestLocation, type IReliefRequest } from "./request.model.js";
 import { User } from "../auth/user.model.js";
 import { notificationService } from "../notifications/notification.service.js";
 
@@ -195,9 +195,9 @@ export class RoutingService {
       ngos.map(async (ngo) => {
         const userId = (ngo._id as { toString(): string }).toString();
         const activeRequests = await ReliefRequest.countDocuments({
-          assignedNGO: userId,
-          status: { $nin: ["completed", "rejected", "escalated", "resolved"] },
-        });
+  assignedNGO: userId,
+  status: { $nin: ["completed", "rejected", "escalated", "resolved"] },
+} as unknown as Partial<IReliefRequest>);
         return { ...ngo, score: 100 - activeRequests * 10 };
       })
     );
