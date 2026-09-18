@@ -41,6 +41,33 @@ const upload = multer({
   },
 });
 
+import { v2 as cloudinary } from "cloudinary";
+
+if (process.env.CLOUDINARY_CLOUD_NAME) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key:    process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  } as any);
+}
+
+const handleCloudinaryUpload = async (req: any, _res: any, next: any) => {
+  if (req.file && process.env.CLOUDINARY_CLOUD_NAME) {
+    try {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "disaster_requests",
+      });
+      req.file.filename = result.secure_url;
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+    } catch (err) {
+      console.error("[Cloudinary] Upload failed, using local file:", err);
+    }
+  }
+  next();
+};
+
 const router = Router();
 
 // CRUD

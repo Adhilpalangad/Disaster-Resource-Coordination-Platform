@@ -12,6 +12,7 @@ import ngoRouter          from "./features/ngos/ngo.routes.js";
 import notificationRouter from "./features/notifications/notification.routes.js";
 import authRouter         from "./features/auth/auth.routes.js";
 import inventoryRouter    from "./features/inventory/inventory.routes.js";
+import contactRouter      from "./features/contact/contact.routes.js";
 import volunteerRouter    from "./features/volunteers/volunteer.routes.js";
 import shelterRouter      from "./features/shelters/shelter.routes.js";
 import dashboardRouter    from "./features/dashboard/dashboard.routes.js";
