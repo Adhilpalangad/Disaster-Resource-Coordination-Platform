@@ -9,6 +9,10 @@ import {
   markInTransit, markDelivered, confirmDelivery,
 } from "./request.controller.js";
 import { requireAuth } from "../../middleware/auth.middleware.js";
+import { validateBody } from "../../utils/validate.js";
+import {
+  updateRequestSchema, rejectRequestSchema, assignVolunteerSchema, confirmDeliverySchema,
+} from "./request.validation.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -40,25 +44,28 @@ const upload = multer({
 const router = Router();
 
 // CRUD
+// Note: createRequest is multipart/form-data (image upload) with several JSON-stringified
+// fields (location, ageGroups, specialNeeds), so it validates internally with Zod after
+// deserialising those fields, rather than via a router-level validateBody() middleware.
 router.post("/",    upload.single("image"), createRequest);
 router.get("/",     requireAuth, getAllRequests);
 router.get("/:id",  getRequestById);
-router.put("/:id",  updateRequest);
+router.put("/:id",  validateBody(updateRequestSchema), updateRequest);
 router.delete("/:id", deleteRequest);
 
 // NGO lifecycle actions
 router.post("/:id/accept",            ngoAcceptRequest);
 router.post("/:id/verify",            verifyRequest);
-router.post("/:id/reject",            rejectRequest);
+router.post("/:id/reject",            validateBody(rejectRequestSchema), rejectRequest);
 router.post("/:id/reserve-resources", reserveResources);
-router.post("/:id/assign-volunteer",  assignVolunteer);
+router.post("/:id/assign-volunteer",  validateBody(assignVolunteerSchema), assignVolunteer);
 
 // Volunteer actions
 router.post("/:id/in-transit",  markInTransit);
 router.post("/:id/delivered",   markDelivered);
 
 // Citizen confirmation
-router.post("/:id/confirm",     confirmDelivery);
+router.post("/:id/confirm",     validateBody(confirmDeliverySchema), confirmDelivery);
 
 export default router;
 export { uploadsDir };
