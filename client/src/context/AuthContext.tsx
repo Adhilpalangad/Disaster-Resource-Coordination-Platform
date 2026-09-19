@@ -4,6 +4,7 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useRef,
 } from "react";
 import type { User, UserRole, LoginCredentials, RegisterPayload } from "../types/index.js";
 import { supabase } from "../lib/supabase.js";
@@ -40,55 +41,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Sync Supabase Auth with backend Profile
-  const loadUserProfile = async (accessToken: string) => {
-    try {
-      setToken(accessToken);
-      const res = await api.get("/auth/me", {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      // Normalise: server returns `_id` from Mongoose; ensure `id` is always a string
-      // Normalise: server always sends id, but guard against _id-only responses
-      const raw = res.data.data;
-      setUser({ ...raw, id: raw.id ?? raw._id });
-    } catch (error: unknown) {
-      // If profile not found (404), the user exists in Supabase but not MongoDB.
-      // This can happen if email confirmation was required and sync was skipped.
-      // Auto-sync with minimal data so the user can at least log in.
-      const status = (error as { response?: { status?: number } })?.response?.status;
-      if (status === 404) {
-        try {
-          const { data: { user: sbUser } } = await supabase.auth.getUser();
-          if (sbUser) {
-            await api.post(
-              "/auth/sync",
-              {
-                name: sbUser.user_metadata?.name || sbUser.email?.split('@')[0] || 'User',
-                email: sbUser.email,
-                role: sbUser.user_metadata?.role || 'citizen',
-                phone: sbUser.user_metadata?.phone,
-                organizationName: sbUser.user_metadata?.organizationName,
-                district: sbUser.user_metadata?.district,
-                profession: sbUser.user_metadata?.profession,
-              },
-              { headers: { Authorization: `Bearer ${accessToken}` } }
-            );
-            const retry = await api.get("/auth/me", {
-              headers: { Authorization: `Bearer ${accessToken}` },
-            });
-            const retryRaw = retry.data.data;
-            setUser({ ...retryRaw, id: retryRaw.id ?? retryRaw._id });
-            return;
-          }
-        } catch (syncErr) {
-          console.error("Auto-sync failed:", syncErr);
-        }
-      }
-      console.error("Failed to load user profile:", error);
-      setUser(null);
-      setToken(null);
+  // supabase.auth.signInWithPassword() fires the onAuthStateChange "SIGNED_IN"
+  // listener below AND login()/register() also call loadUserProfile() directly for
+  // the same token — without de-duping, both run concurrently. For a brand-new user
+  // (no Mongo profile yet) both hit the 404-then-/auth/sync path at once; one sync
+  // call wins, the other hits a duplicate-key error and calls setUser(null). Whichever
+  // call happens to resolve last wins the race, so a successful login was
+  // intermittently getting silently undone. Caching the in-flight promise per token
+  // makes concurrent callers share one execution instead of racing.
+  const inFlightProfileLoad = useRef<{ token: string; promise: Promise<void> } | null>(null);
+
+  const loadUserProfile = useCallback((accessToken: string): Promise<void> => {
+    if (inFlightProfileLoad.current?.token === accessToken) {
+      return inFlightProfileLoad.current.promise;
     }
-  };
+
+    const promise = (async () => {
+      try {
+        setToken(accessToken);
+        const res = await api.get("/auth/me", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        // Normalise: server returns `_id` from Mongoose; ensure `id` is always a string
+        // Normalise: server always sends id, but guard against _id-only responses
+        const raw = res.data.data;
+        setUser({ ...raw, id: raw.id ?? raw._id });
+      } catch (error: unknown) {
+        // If profile not found (404), the user exists in Supabase but not MongoDB.
+        // This can happen if email confirmation was required and sync was skipped.
+        // Auto-sync with minimal data so the user can at least log in.
+        const status = (error as { response?: { status?: number } })?.response?.status;
+        if (status === 404) {
+          try {
+            const { data: { user: sbUser } } = await supabase.auth.getUser();
+            if (sbUser) {
+              await api.post(
+                "/auth/sync",
+                {
+                  name: sbUser.user_metadata?.name || sbUser.email?.split('@')[0] || 'User',
+                  email: sbUser.email,
+                  role: sbUser.user_metadata?.role || 'citizen',
+                  phone: sbUser.user_metadata?.phone,
+                  organizationName: sbUser.user_metadata?.organizationName,
+                  district: sbUser.user_metadata?.district,
+                  profession: sbUser.user_metadata?.profession,
+                },
+                { headers: { Authorization: `Bearer ${accessToken}` } }
+              );
+              const retry = await api.get("/auth/me", {
+                headers: { Authorization: `Bearer ${accessToken}` },
+              });
+              const retryRaw = retry.data.data;
+              setUser({ ...retryRaw, id: retryRaw.id ?? retryRaw._id });
+              return;
+            }
+          } catch (syncErr) {
+            console.error("Auto-sync failed:", syncErr);
+          }
+        }
+        console.error("Failed to load user profile:", error);
+        setUser(null);
+        setToken(null);
+      }
+    })();
+
+    inFlightProfileLoad.current = { token: accessToken, promise };
+    return promise;
+  }, []);
 
   useEffect(() => {
     let mounted = true;

@@ -104,31 +104,15 @@ export const syncUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    let user = await User.findOne({ supabaseId });
-
-    if (user) {
-      // Update existing user
-      user.name = name;
-      user.email = email;
-      user.role = role;
-      user.phone = phone;
-      user.organizationName = organizationName;
-      user.district = district;
-      user.profession = profession;
-      await user.save();
-    } else {
-      // Create new user
-      user = await User.create({
-        supabaseId,
-        name,
-        email,
-        role,
-        phone,
-        organizationName,
-        district,
-        profession,
-      });
-    }
+    // findOneAndUpdate+upsert is atomic at the database level — unlike a separate
+    // findOne() then create()/save(), it can't race with a concurrent sync call for
+    // the same supabaseId (e.g. the client firing /auth/sync from two places at once
+    // right after login) and throw a duplicate-key error on the unique index.
+    const user = await User.findOneAndUpdate(
+      { supabaseId },
+      { supabaseId, name, email, role, phone, organizationName, district, profession },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     res.status(200).json({ success: true, data: user });
   } catch (error) {
