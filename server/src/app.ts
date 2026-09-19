@@ -13,6 +13,10 @@ import notificationRouter from "./features/notifications/notification.routes.js"
 import authRouter         from "./features/auth/auth.routes.js";
 import inventoryRouter    from "./features/inventory/inventory.routes.js";
 import systemConfigRouter from "./features/config/systemConfig.routes.js";
+import contactRouter      from "./features/contact/contact.routes.js";
+import volunteerRouter    from "./features/volunteers/volunteer.routes.js";
+import shelterRouter      from "./features/shelters/shelter.routes.js";
+import dashboardRouter    from "./features/dashboard/dashboard.routes.js";
 
 import mongoSanitize from "express-mongo-sanitize";
 
@@ -76,6 +80,10 @@ app.use("/api/notifications", notificationRouter);
 app.use("/api/auth",          authRouter);
 app.use("/api/inventory",    inventoryRouter);
 app.use("/api/config",       systemConfigRouter);
+app.use("/api/inventory",     inventoryRouter);
+app.use("/api/volunteers",    volunteerRouter);
+app.use("/api/shelters",      shelterRouter);
+app.use("/api/dashboard",     dashboardRouter);
 
 app.get("/", (_req, res) => {
   res.json({ success: true, message: "Disaster Platform API v2 — request routing enabled" });

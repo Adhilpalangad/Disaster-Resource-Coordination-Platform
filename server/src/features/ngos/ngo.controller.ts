@@ -1,71 +1,78 @@
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import { NGOProfile } from "./ngo.model.js";
+import { AppError } from "../../utils/AppError.js";
+import { getPagination, buildPaginationMeta } from "../../utils/pagination.js";
+import { buildSearchFilter } from "../../utils/search.js";
+import type { CreateNGOInput, UpdateNGOInput } from "./ngo.validation.js";
 
-// ── GET /api/ngos — all profiles (admin) ─────────────────────────────────────
-export const getAllNGOs = async (req: Request, res: Response): Promise<void> => {
+const SEARCH_FIELDS = ["orgName", "email", "phone"];
+
+// ── GET /api/ngos — all profiles (admin). Supports ?isActive=, ?search=,
+//    ?page=, ?limit=, ?skip= (all optional, backward-compatible). ─────────────
+export const getAllNGOs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const filter: Record<string, unknown> = {};
     if (req.query["isActive"] !== undefined) {
-      filter.isActive = req.query["isActive"] === "true";
+      filter["isActive"] = req.query["isActive"] === "true";
     }
-    const ngos = await NGOProfile.find(filter).sort({ createdAt: -1 });
-    res.json({ success: true, data: ngos });
+    Object.assign(filter, buildSearchFilter(req.query["search"], SEARCH_FIELDS));
+
+    const pagination = getPagination(req.query);
+
+    if (!pagination.applied) {
+      const ngos = await NGOProfile.find(filter).sort({ createdAt: -1 });
+      res.json({ success: true, data: ngos, ...buildPaginationMeta(ngos.length, pagination) });
+      return;
+    }
+
+    const [ngos, total] = await Promise.all([
+      NGOProfile.find(filter).sort({ createdAt: -1 }).skip(pagination.skip).limit(pagination.limit),
+      NGOProfile.countDocuments(filter),
+    ]);
+    res.json({ success: true, data: ngos, ...buildPaginationMeta(total, pagination) });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to fetch NGOs", error: String(error) });
+    next(error);
   }
 };
 
 // ── GET /api/ngos/profile/:userId — NGO user's own profile ───────────────────
-export const getMyProfile = async (req: Request, res: Response): Promise<void> => {
+export const getMyProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = String(req.params["userId"] ?? "");
     const ngo = await NGOProfile.findOne({ userId });
     if (!ngo) {
-      res.status(404).json({ success: false, message: "No NGO profile found for this user account. Contact your administrator." });
-      return;
+      throw AppError.notFound("No NGO profile found for this user account. Contact your administrator.");
     }
     res.json({ success: true, data: ngo });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to fetch NGO profile", error: String(error) });
+    next(error);
   }
 };
 
 // ── GET /api/ngos/:id — get by MongoDB _id ───────────────────────────────────
-export const getNGOById = async (req: Request, res: Response): Promise<void> => {
+export const getNGOById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const ngo = await NGOProfile.findById(String(req.params["id"] ?? ""));
-    if (!ngo) {
-      res.status(404).json({ success: false, message: "NGO not found" });
-      return;
-    }
+    if (!ngo) throw AppError.notFound("NGO not found");
     res.json({ success: true, data: ngo });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to fetch NGO", error: String(error) });
+    next(error);
   }
 };
 
 // ── POST /api/ngos — create (admin) ──────────────────────────────────────────
-export const createNGO = async (req: Request, res: Response): Promise<void> => {
+export const createNGO = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
+    // req.body was already validated/coerced by validateBody(createNGOSchema) in ngo.routes.ts
     const {
       userId, orgName, email, phone,
       serviceAreas,
       resourceCapacity, acceptanceTimeoutMinutes,
-    } = req.body as {
-      userId: string; orgName: string; email: string; phone?: string;
-      serviceAreas?: { districtIds?: string[]; talukIds?: string[]; localBodyIds?: string[] };
-      resourceCapacity?: number; acceptanceTimeoutMinutes?: number;
-    };
-
-    if (!userId || !orgName || !email) {
-      res.status(400).json({ success: false, message: "userId, orgName, and email are required" });
-      return;
-    }
+    } = req.body as CreateNGOInput;
 
     const existing = await NGOProfile.findOne({ userId });
     if (existing) {
-      res.status(409).json({ success: false, message: "An NGO profile already exists for this user" });
-      return;
+      throw AppError.conflict("An NGO profile already exists for this user");
     }
 
     const ngo = await NGOProfile.create({
@@ -86,30 +93,27 @@ export const createNGO = async (req: Request, res: Response): Promise<void> => {
 
     res.status(201).json({ success: true, message: "NGO registered successfully", data: ngo });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to create NGO", error: String(error) });
+    next(error);
   }
 };
 
 // ── PUT /api/ngos/:id — update profile ───────────────────────────────────────
-export const updateNGO = async (req: Request, res: Response): Promise<void> => {
+export const updateNGO = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
+    // req.body was already validated/coerced by validateBody(updateNGOSchema) in ngo.routes.ts
     const {
       orgName, email, phone,
       serviceAreas,
       resourceCapacity, acceptanceTimeoutMinutes,
-    } = req.body as {
-      orgName?: string; email?: string; phone?: string;
-      serviceAreas?: { districtIds?: string[]; talukIds?: string[]; localBodyIds?: string[] };
-      resourceCapacity?: number; acceptanceTimeoutMinutes?: number;
-    };
+    } = req.body as UpdateNGOInput;
 
     const patch: Record<string, unknown> = {};
-    if (orgName)                        patch.orgName                = orgName;
-    if (email)                          patch.email                  = email;
-    if (phone !== undefined)            patch.phone                  = phone;
-    if (serviceAreas)                   patch.serviceAreas           = serviceAreas;
-    if (resourceCapacity !== undefined) patch.resourceCapacity       = resourceCapacity;
-    if (acceptanceTimeoutMinutes !== undefined) patch.acceptanceTimeoutMinutes = acceptanceTimeoutMinutes;
+    if (orgName)                        patch["orgName"]                = orgName;
+    if (email)                          patch["email"]                  = email;
+    if (phone !== undefined)            patch["phone"]                  = phone;
+    if (serviceAreas)                   patch["serviceAreas"]           = serviceAreas;
+    if (resourceCapacity !== undefined) patch["resourceCapacity"]       = resourceCapacity;
+    if (acceptanceTimeoutMinutes !== undefined) patch["acceptanceTimeoutMinutes"] = acceptanceTimeoutMinutes;
 
     const updated = await NGOProfile.findByIdAndUpdate(
       String(req.params["id"] ?? ""),
@@ -117,28 +121,22 @@ export const updateNGO = async (req: Request, res: Response): Promise<void> => {
       { new: true }
     );
 
-    if (!updated) {
-      res.status(404).json({ success: false, message: "NGO not found" });
-      return;
-    }
+    if (!updated) throw AppError.notFound("NGO not found");
     res.json({ success: true, message: "NGO updated", data: updated });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to update NGO", error: String(error) });
+    next(error);
   }
 };
 
 // ── POST /api/ngos/:id/toggle — activate / deactivate ────────────────────────
-export const toggleActive = async (req: Request, res: Response): Promise<void> => {
+export const toggleActive = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const ngo = await NGOProfile.findById(String(req.params["id"] ?? ""));
-    if (!ngo) {
-      res.status(404).json({ success: false, message: "NGO not found" });
-      return;
-    }
+    if (!ngo) throw AppError.notFound("NGO not found");
     ngo.isActive = !ngo.isActive;
     await ngo.save();
     res.json({ success: true, message: `NGO ${ngo.isActive ? "activated" : "deactivated"}`, data: ngo });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to toggle NGO status", error: String(error) });
+    next(error);
   }
 };

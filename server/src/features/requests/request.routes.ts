@@ -14,6 +14,10 @@ import {
   getDuplicateLogsForRequest,
 } from "./duplicate.controller.js";
 import { requireAuth } from "../../middleware/auth.middleware.js";
+import { validateBody } from "../../utils/validate.js";
+import {
+  updateRequestSchema, rejectRequestSchema, assignVolunteerSchema, confirmDeliverySchema,
+} from "./request.validation.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -42,6 +46,33 @@ const upload = multer({
   },
 });
 
+import { v2 as cloudinary } from "cloudinary";
+
+if (process.env.CLOUDINARY_CLOUD_NAME) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key:    process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  } as any);
+}
+
+const handleCloudinaryUpload = async (req: any, _res: any, next: any) => {
+  if (req.file && process.env.CLOUDINARY_CLOUD_NAME) {
+    try {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "disaster_requests",
+      });
+      req.file.filename = result.secure_url;
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+    } catch (err) {
+      console.error("[Cloudinary] Upload failed, using local file:", err);
+    }
+  }
+  next();
+};
+
 const router = Router();
 
 // Duplicate Management Routes (Must precede /:id)
@@ -50,25 +81,28 @@ router.post("/duplicates/logs/:logId/override", requireAuth, overrideDuplicateAt
 router.get("/:requestId/duplicates", requireAuth, getDuplicateLogsForRequest);
 
 // CRUD
+// Note: createRequest is multipart/form-data (image upload) with several JSON-stringified
+// fields (location, ageGroups, specialNeeds), so it validates internally with Zod after
+// deserialising those fields, rather than via a router-level validateBody() middleware.
 router.post("/",    upload.single("image"), createRequest);
 router.get("/",     requireAuth, getAllRequests);
 router.get("/:id",  getRequestById);
-router.put("/:id",  updateRequest);
+router.put("/:id",  validateBody(updateRequestSchema), updateRequest);
 router.delete("/:id", deleteRequest);
 
 // NGO lifecycle actions
 router.post("/:id/accept",            ngoAcceptRequest);
 router.post("/:id/verify",            verifyRequest);
-router.post("/:id/reject",            rejectRequest);
+router.post("/:id/reject",            validateBody(rejectRequestSchema), rejectRequest);
 router.post("/:id/reserve-resources", reserveResources);
-router.post("/:id/assign-volunteer",  assignVolunteer);
+router.post("/:id/assign-volunteer",  validateBody(assignVolunteerSchema), assignVolunteer);
 
 // Volunteer actions
 router.post("/:id/in-transit",  markInTransit);
 router.post("/:id/delivered",   markDelivered);
 
 // Citizen confirmation
-router.post("/:id/confirm",     confirmDelivery);
+router.post("/:id/confirm",     validateBody(confirmDeliverySchema), confirmDelivery);
 
 export default router;
 export { uploadsDir };

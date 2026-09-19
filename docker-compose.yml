@@ -3,39 +3,27 @@ services:
     build:
       context: .
       dockerfile: docker/client/Dockerfile
-
+      args:
+        VITE_API_URL: http://localhost:5000/api
     container_name: disaster-client
-
     ports:
-      - "5173:5173"
-
-    volumes:
-      - ./client:/app
-      - /app/node_modules
-
+      - "80:80"
+      - "5173:80"
     depends_on:
       - server
+    restart: unless-stopped
 
   server:
     build:
       context: .
       dockerfile: docker/server/Dockerfile
-
     container_name: disaster-server
-
     ports:
       - "5000:5000"
-
-    volumes:
-      - ./server:/app
-      - /app/node_modules
-
     env_file:
       - .env
-
     depends_on:
       - mongo
-
     restart: unless-stopped
 
   mongo:

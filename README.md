@@ -1,7 +1,7 @@
 <div align="center">
   <h1 align="center">Disaster Resource Coordination Platform</h1>
   <p align="center">
-    A robust, real-time coordination platform designed to streamline disaster response, resource allocation, and communication during critical emergencies.
+    A real-time coordination platform designed to streamline disaster response, resource allocation, and communication during critical emergencies.
   </p>
 </div>
 
@@ -18,39 +18,40 @@
         <li><a href="#environment-variables">Environment Variables</a></li>
       </ul>
     </li>
-    <li><a href="#usage">Usage</a></li>
-    <li><a href="#contributing">Contributing</a></li>
+    <li><a href="#deployment">Deployment</a></li>
     <li><a href="#license">License</a></li>
   </ol>
 </details>
 
 ## About The Project
 
-The **Disaster Resource Coordination Platform** is a full-stack application engineered to address the complex logistical challenges faced during disaster scenarios. By bridging the gap between those who need resources (individuals, shelters, local agencies) and those who provide them (NGOs, governments, volunteers), this platform guarantees real-time synchronization, secure authentication, and a streamlined approach to crisis management.
+The **Disaster Resource Coordination Platform** bridges the gap between individuals needing emergency relief, shelters, NGOs, and government response teams. It provides authenticated role-based access, inventory tracking, volunteer roster management, shelter capacity monitoring, and automated request routing.
 
 ### Key Features
-- **Real-Time Resource Tracking**: Live updates of available and requested resources using Supabase Realtime and WebSockets.
-- **Secure Authentication & Roles**: Robust JWT and Supabase-backed authentication with multi-level role-based access control (RBAC).
-- **Interactive Dashboards**: Clean, responsive, and intuitive interfaces tailored for different user roles (Admins, Responders, Citizens).
-- **Robust API & Data Handling**: Express backend coupled with MongoDB for scalable data modeling and high-availability operations.
+- **Relief Request Routing**: Automated geographic & workload routing of emergency requests to local NGOs.
+- **Role-Based Access Control**: Role support for Citizens, Volunteers, NGO Representatives, and Administrators.
+- **Inventory & Resource Management**: Bulk Excel imports, global resource audits, and NGO inventory tracking.
+- **Shelter & Volunteer Oversight**: Real-time shelter occupancy tracking and volunteer deployment rosters.
+- **Support & Notification Integration**: Nodemailer-powered notifications and integrated contact support.
 
 ---
 
 ## Technology Stack
 
 ### Frontend (Client)
-- **Framework:** [React 19](https://reactjs.org/) + [Vite](https://vitejs.dev/)
+- **Framework:** React 19 + Vite
 - **Routing:** React Router v7
-- **Styling & UI:** Modern CSS/Tailwind (Lucide React for icons)
-- **Data & API:** Axios, Supabase Client
+- **Styling:** Custom Vanilla CSS Design System with dark mode support
+- **Icons & UI:** Lucide React
+- **Data & Auth:** Axios, Supabase JS Client
 
 ### Backend (Server)
-- **Environment:** [Node.js](https://nodejs.org/) (v20+)
-- **Framework:** [Express.js](https://expressjs.com/)
-- **Database:** [MongoDB](https://www.mongodb.com/) (Mongoose ODM)
-- **Auth & Real-time:** [Supabase](https://supabase.com/), WebSockets (`ws`)
-- **Security:** Helmet, CORS, JSONWebToken
-- **Utilities:** Nodemailer, Multer, XLSX
+- **Environment:** Node.js (v20+)
+- **Framework:** Express.js (ES Modules)
+- **Database:** MongoDB (Mongoose ODM)
+- **Authentication:** Supabase Auth & JWT middleware
+- **File Storage:** Multer & Cloudinary
+- **Security & Utilities:** Helmet, CORS, Express Rate Limit, Nodemailer, XLSX, XSS
 
 ---
 
@@ -58,25 +59,21 @@ The **Disaster Resource Coordination Platform** is a full-stack application engi
 
 ```mermaid
 graph TD;
-    Client[React/Vite Frontend] -->|HTTPS/REST| Server[Express.js Backend];
-    Client -->|WebSockets| Realtime[Supabase Realtime];
+    Client[React/Vite Frontend] -->|REST API| Server[Express.js Backend];
     Server -->|Mongoose| MongoDB[(MongoDB)];
-    Server -->|Auth & Admin API| Supabase[(Supabase)];
+    Server -->|Admin SDK & JWT| Supabase[(Supabase)];
+    Server -->|Media Uploads| Cloudinary[(Cloudinary)];
+    Server -->|Email Alerts| SMTP[(Nodemailer / SMTP)];
 ```
 
 ---
 
 ## Getting Started
 
-Follow these instructions to get a copy of the project up and running on your local machine for development and testing purposes.
-
 ### Prerequisites
-
-Ensure you have the following installed:
-- [Node.js](https://nodejs.org/) (v20 or higher recommended)
-- [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/)
-- A running [MongoDB](https://www.mongodb.com/) cluster/instance
-- A [Supabase](https://supabase.com/) project
+- Node.js v20+
+- MongoDB instance (Local or MongoDB Atlas)
+- Supabase account & project
 
 ### Installation
 
@@ -86,78 +83,65 @@ Ensure you have the following installed:
    cd Disaster-Resource-Coordination-Platform
    ```
 
-2. **Install Client Dependencies**
+2. **Install Client & Server Dependencies**
    ```sh
-   cd client
-   npm install
+   cd client && npm install
+   cd ../server && npm install
    ```
 
-3. **Install Server Dependencies**
+3. **Run Locally in Development**
    ```sh
-   cd ../server
-   npm install
-   ```
+   # In /server
+   npm run dev
 
-### Environment Variables
-
-You need to create a `.env` file in both the `client` and `server` directories.
-
-**Client `.env` example:**
-```env
-VITE_API_BASE_URL=http://localhost:5000/api
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-**Server `.env` example:**
-```env
-PORT=5000
-MONGODB_URI=your_mongodb_connection_string
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-JWT_SECRET=your_jwt_secret
-```
-
----
-
-## Usage
-
-To run the application locally in development mode:
-
-1. **Start the backend server:**
-   ```sh
-   cd server
+   # In /client
    npm run dev
    ```
 
-2. **Start the frontend client:**
-   ```sh
-   cd client
-   npm run dev
-   ```
+---
 
-3. **Access the application:**
-   Open your browser and navigate to `http://localhost:5173`.
+## Environment Variables
+
+### Client Variables (`client/.env`) — *Client-safe*
+| Variable | Description | Example |
+|---|---|---|
+| `VITE_API_URL` | Base URL of backend Express API | `http://localhost:5000/api` |
+| `VITE_SUPABASE_URL` | Supabase Project URL | `https://your-project.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | Supabase Public Anonymous Key | `eyJhbGci...` |
+
+### Server Variables (`server/.env` / root `.env`) — *Server-only Secrets*
+| Variable | Description | Required |
+|---|---|---|
+| `PORT` | HTTP Server port | No (Default: `5000`) |
+| `MONGODB_URI` | MongoDB connection URI | Yes |
+| `JWT_SECRET` | Secret key for JWT verification | Yes |
+| `SUPABASE_URL` | Supabase Project URL | Yes |
+| `SUPABASE_ANON_KEY` | Supabase Anonymous Key | Yes |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase Service Role Key | Yes |
+| `CLOUDINARY_CLOUD_NAME` | Cloudinary Cloud Name | Optional |
+| `CLOUDINARY_API_KEY` | Cloudinary API Key | Optional |
+| `CLOUDINARY_API_SECRET` | Cloudinary API Secret | Optional |
+| `SMTP_USER` | SMTP Username / Sender Email | Optional |
+| `SMTP_PASS` | SMTP Password / App Password | Optional |
+| `SMTP_FROM` | Sender display header | Optional |
+| `NOTIFY_TEST_EMAIL` | Test email inbox override | Optional |
 
 ---
 
-## Contributing
+## Deployment
 
-Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+The application includes production deployment configurations for multiple platforms:
 
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+- **Docker / Docker Compose**: Multi-stage production builds for Nginx static client (`docker/client/Dockerfile`) and Node server (`docker/server/Dockerfile`).
+  ```sh
+  docker compose up --build
+  ```
+- **Vercel**: `vercel.json` configured for SPA routing.
+- **Render**: `render.yaml` blueprint for Server Web Service and Client Static Site.
+- **Railway**: `railway.json` configuration for containerized deployment.
 
 ---
 
 ## License
 
-Distributed under the MIT License. See `LICENSE` for more information.
-
-<div align="center">
-  <sub>Built with ❤️ for rapid disaster response.</sub>
-</div>
+Distributed under the MIT License. See [`LICENSE`](file:///c:/Users/Adi/.gemini/antigravity-ide/scratch/Disaster-Resource-Coordination-Platform/LICENSE) for more information.

@@ -30,6 +30,15 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    // SECURITY TODO: this endpoint is public and does not restrict `role` to an
+    // allow-list — the client UI (Register.tsx) hides "admin" as an option, but
+    // nothing server-side stops a direct POST with role: "admin" from succeeding,
+    // since the Mongoose schema enum also permits "admin". There is currently no
+    // other in-app path to create/promote an admin account. Fix: restrict `role`
+    // here to ["citizen", "ngo", "volunteer"], and provision admin accounts only
+    // through a trusted/internal path (e.g. a separate authenticated admin-only
+    // endpoint or direct DB provisioning).
+
     console.log(`[${new Date().toISOString()}] Starting registration for ${email}`);
     const adminClient = getAdminClient();
 
@@ -95,31 +104,15 @@ export const syncUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    let user = await User.findOne({ supabaseId });
-
-    if (user) {
-      // Update existing user
-      user.name = name;
-      user.email = email;
-      user.role = role;
-      user.phone = phone;
-      user.organizationName = organizationName;
-      user.district = district;
-      user.profession = profession;
-      await user.save();
-    } else {
-      // Create new user
-      user = await User.create({
-        supabaseId,
-        name,
-        email,
-        role,
-        phone,
-        organizationName,
-        district,
-        profession,
-      });
-    }
+    // findOneAndUpdate+upsert is atomic at the database level — unlike a separate
+    // findOne() then create()/save(), it can't race with a concurrent sync call for
+    // the same supabaseId (e.g. the client firing /auth/sync from two places at once
+    // right after login) and throw a duplicate-key error on the unique index.
+    const user = await User.findOneAndUpdate(
+      { supabaseId },
+      { supabaseId, name, email, role, phone, organizationName, district, profession },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     res.status(200).json({ success: true, data: user });
   } catch (error) {
@@ -274,3 +267,61 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ success: false, message: 'Internal server error', error: String(error) });
   }
 };
+
+export const getUsers = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { search, role } = req.query;
+    const query: Record<string, unknown> = {};
+
+    if (role && typeof role === 'string' && role !== 'all') {
+      query.role = role.trim();
+    }
+
+    if (search && typeof search === 'string' && search.trim()) {
+      const regex = new RegExp(search.trim(), 'i');
+      query.$or = [
+        { name: regex },
+        { email: regex },
+        { phone: regex },
+        { district: regex },
+        { profession: regex },
+        { organizationName: regex },
+      ];
+    }
+
+    const users = await User.find(query).sort({ createdAt: -1 });
+    res.status(200).json({ success: true, data: users, count: users.length });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch users', error: String(error) });
+  }
+};
+
+export const updateUserById = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { name, role, phone, district, profession, organizationName } = req.body;
+
+    const user = await User.findByIdAndUpdate(
+      id,
+      {
+        ...(name && { name: name.trim() }),
+        ...(role && { role }),
+        ...(phone !== undefined && { phone: phone.trim() }),
+        ...(district !== undefined && { district: district.trim() }),
+        ...(profession !== undefined && { profession: profession.trim() }),
+        ...(organizationName !== undefined && { organizationName: organizationName.trim() }),
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
+    }
+
+    res.status(200).json({ success: true, message: 'User updated successfully', data: user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to update user', error: String(error) });
+  }
+};
+

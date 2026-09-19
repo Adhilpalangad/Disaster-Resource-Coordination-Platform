@@ -1,6 +1,12 @@
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import * as XLSX from "xlsx";
 import { InventoryItem, type InventoryCategory } from "./inventory.model.js";
+import { AppError } from "../../utils/AppError.js";
+import { getPagination, buildPaginationMeta } from "../../utils/pagination.js";
+import { buildSearchFilter } from "../../utils/search.js";
+import type { AddInventoryItemInput, UpdateInventoryItemInput, BulkImportInput } from "./inventory.validation.js";
+
+const SEARCH_FIELDS = ["name", "category", "location", "notes"];
 
 // ── Allowed categories (normalisation map) ────────────────────────────────────
 const CATEGORY_ALIASES: Record<string, InventoryCategory> = {
@@ -41,11 +47,10 @@ function normaliseDate(raw: unknown): Date | undefined {
 /** POST /api/inventory/parse-excel
  *  Accepts multipart file, returns parsed rows without touching the DB.
  */
-export const parseExcel = async (req: Request, res: Response): Promise<void> => {
+export const parseExcel = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.file) {
-      res.status(400).json({ success: false, message: "No file uploaded. Please attach an Excel (.xlsx / .xls) or CSV file." });
-      return;
+      throw AppError.badRequest("No file uploaded. Please attach an Excel (.xlsx / .xls) or CSV file.");
     }
 
     const workbook = XLSX.read(req.file.buffer, {
@@ -57,8 +62,7 @@ export const parseExcel = async (req: Request, res: Response): Promise<void> => 
     const firstSheetName = workbook.SheetNames[0];
     const sheet = firstSheetName ? workbook.Sheets[firstSheetName] : undefined;
     if (!sheet || !firstSheetName) {
-      res.status(400).json({ success: false, message: "The uploaded file has no sheets." });
-      return;
+      throw AppError.badRequest("The uploaded file has no sheets.");
     }
 
     // Convert to array-of-objects, first row is header
@@ -68,8 +72,7 @@ export const parseExcel = async (req: Request, res: Response): Promise<void> => 
     });
 
     if (raw.length === 0) {
-      res.status(400).json({ success: false, message: "The sheet is empty or has no data rows." });
-      return;
+      throw AppError.badRequest("The sheet is empty or has no data rows.");
     }
 
     // Normalise: find columns case-insensitively
@@ -109,11 +112,7 @@ export const parseExcel = async (req: Request, res: Response): Promise<void> => 
       meta: { total: rows.length, valid, invalid, sheetName: firstSheetName },
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Failed to parse file. Make sure it is a valid Excel (.xlsx / .xls) or CSV.",
-      error: String(error),
-    });
+    next(error);
   }
 };
 
@@ -123,19 +122,10 @@ export const parseExcel = async (req: Request, res: Response): Promise<void> => 
  *  Body: { ngoId: string; items: ParsedRow[]; mode: "append" | "replace" }
  *  mode "replace" clears all existing items for this NGO first.
  */
-export const bulkImport = async (req: Request, res: Response): Promise<void> => {
+export const bulkImport = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { ngoId, items, mode = "append" } = req.body as {
-      ngoId:  string;
-      items:  { name: string; category: string; quantity: number; unit: string; location?: string; expiresAt?: string; notes?: string }[];
-      mode?:  "append" | "replace";
-    };
-
-    if (!ngoId) { res.status(400).json({ success: false, message: "ngoId is required" }); return; }
-    if (!Array.isArray(items) || items.length === 0) {
-      res.status(400).json({ success: false, message: "items array is required and must not be empty" });
-      return;
-    }
+    // req.body was already validated/coerced by validateBody(bulkImportSchema) in inventory.routes.ts
+    const { ngoId, items, mode } = req.body as BulkImportInput;
 
     if (mode === "replace") {
       await InventoryItem.deleteMany({ ngoId });
@@ -162,7 +152,7 @@ export const bulkImport = async (req: Request, res: Response): Promise<void> => 
       data: inserted,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Bulk import failed", error: String(error) });
+    next(error);
   }
 };
 
@@ -171,102 +161,137 @@ export const bulkImport = async (req: Request, res: Response): Promise<void> => 
 /** GET /api/inventory/template
  *  Returns a sample .xlsx file the NGO can fill in.
  */
-export const downloadTemplate = async (_req: Request, res: Response): Promise<void> => {
-  const sample = [
-    { "Item Name": "Rice Bags", Category: "food", Quantity: 500, Unit: "kg", Location: "Warehouse A", "Expiry Date": "2025-12-31", Notes: "" },
-    { "Item Name": "Drinking Water Cans (20L)", Category: "water", Quantity: 200, Unit: "cans", Location: "Storage Block B", "Expiry Date": "2025-06-30", Notes: "Keep refrigerated" },
-    { "Item Name": "Paracetamol Strips", Category: "medicine", Quantity: 1000, Unit: "strips", Location: "Medical Store", "Expiry Date": "2026-03-01", Notes: "" },
-    { "Item Name": "Cotton Blankets", Category: "clothing", Quantity: 300, Unit: "pcs", Location: "Warehouse A", "Expiry Date": "", Notes: "" },
-    { "Item Name": "Life Jackets", Category: "rescue_equipment", Quantity: 50, Unit: "pcs", Location: "Equipment Bay", "Expiry Date": "", Notes: "Inspect before use" },
-  ];
+export const downloadTemplate = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const sample = [
+      { "Item Name": "Rice Bags", Category: "food", Quantity: 500, Unit: "kg", Location: "Warehouse A", "Expiry Date": "2025-12-31", Notes: "" },
+      { "Item Name": "Drinking Water Cans (20L)", Category: "water", Quantity: 200, Unit: "cans", Location: "Storage Block B", "Expiry Date": "2025-06-30", Notes: "Keep refrigerated" },
+      { "Item Name": "Paracetamol Strips", Category: "medicine", Quantity: 1000, Unit: "strips", Location: "Medical Store", "Expiry Date": "2026-03-01", Notes: "" },
+      { "Item Name": "Cotton Blankets", Category: "clothing", Quantity: 300, Unit: "pcs", Location: "Warehouse A", "Expiry Date": "", Notes: "" },
+      { "Item Name": "Life Jackets", Category: "rescue_equipment", Quantity: 50, Unit: "pcs", Location: "Equipment Bay", "Expiry Date": "", Notes: "Inspect before use" },
+    ];
 
-  const ws = XLSX.utils.json_to_sheet(sample);
+    const ws = XLSX.utils.json_to_sheet(sample);
 
-  // Column widths
-  ws["!cols"] = [
-    { wch: 30 }, { wch: 18 }, { wch: 12 }, { wch: 12 }, { wch: 20 }, { wch: 15 }, { wch: 30 },
-  ];
+    // Column widths
+    ws["!cols"] = [
+      { wch: 30 }, { wch: 18 }, { wch: 12 }, { wch: 12 }, { wch: 20 }, { wch: 15 }, { wch: 30 },
+    ];
 
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Inventory");
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Inventory");
 
-  const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+    const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
 
-  res.setHeader("Content-Disposition", 'attachment; filename="inventory_template.xlsx"');
-  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-  res.send(buffer);
+    res.setHeader("Content-Disposition", 'attachment; filename="inventory_template.xlsx"');
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.send(buffer);
+  } catch (error) {
+    next(error);
+  }
 };
 
 // ── CRUD ──────────────────────────────────────────────────────────────────────
 
-/** GET /api/inventory?ngoId=xxx */
-export const getInventory = async (req: Request, res: Response): Promise<void> => {
+/** GET /api/inventory?ngoId=xxx — supports ?category=, ?search=,
+ *  ?page=, ?limit=, ?skip= (all optional, backward-compatible). */
+export const getInventory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const ngoId = String(req.query["ngoId"] ?? "");
     const filter: Record<string, unknown> = {};
-    if (ngoId) filter.ngoId = ngoId;
+    if (ngoId) filter["ngoId"] = ngoId;
 
     const category = req.query["category"];
-    if (category) filter.category = category;
+    if (category) filter["category"] = category;
 
-    const items = await InventoryItem.find(filter).sort({ category: 1, name: 1 });
-    const summary = {
+    Object.assign(filter, buildSearchFilter(req.query["search"], SEARCH_FIELDS));
+
+    const pagination = getPagination(req.query);
+
+    const buildSummary = (items: { category: string }[]) => ({
       total: items.length,
       byCategory: items.reduce<Record<string, number>>((acc, it) => {
         acc[it.category] = (acc[it.category] ?? 0) + 1;
         return acc;
       }, {}),
-    };
+    });
 
-    res.json({ success: true, data: items, summary });
+    if (!pagination.applied) {
+      const items = await InventoryItem.find(filter).sort({ category: 1, name: 1 });
+      res.json({ success: true, data: items, summary: buildSummary(items), ...buildPaginationMeta(items.length, pagination) });
+      return;
+    }
+
+    const [items, total] = await Promise.all([
+      InventoryItem.find(filter).sort({ category: 1, name: 1 }).skip(pagination.skip).limit(pagination.limit),
+      InventoryItem.countDocuments(filter),
+    ]);
+    res.json({ success: true, data: items, summary: buildSummary(items), ...buildPaginationMeta(total, pagination) });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to fetch inventory", error: String(error) });
+    next(error);
   }
 };
 
 /** POST /api/inventory (add single item) */
-export const addItem = async (req: Request, res: Response): Promise<void> => {
+export const addItem = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const item = await InventoryItem.create({ ...req.body, category: normaliseCategory(req.body.category) });
+    // req.body was already validated/coerced by validateBody(addInventoryItemSchema) in inventory.routes.ts
+    const body = req.body as AddInventoryItemInput;
+    // Built explicitly (rather than `{ ...body, ... }`) because exactOptionalPropertyTypes
+    // rejects an optional field present-with-value-undefined — omitting the key entirely
+    // is required, matching the codebase's existing `...(x && { x })` convention elsewhere.
+    const item = await InventoryItem.create({
+      ngoId:    body.ngoId,
+      name:     body.name,
+      category: normaliseCategory(body.category),
+      quantity: body.quantity,
+      unit:     body.unit,
+      ...(body.location  !== undefined && { location:  body.location  }),
+      ...(body.expiresAt !== undefined && { expiresAt: body.expiresAt }),
+      ...(body.notes     !== undefined && { notes:     body.notes     }),
+    });
     res.status(201).json({ success: true, message: "Item added", data: item });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to add item", error: String(error) });
+    next(error);
   }
 };
 
 /** PUT /api/inventory/:id */
-export const updateItem = async (req: Request, res: Response): Promise<void> => {
+export const updateItem = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
+    // req.body was already validated/coerced by validateBody(updateInventoryItemSchema) in inventory.routes.ts
+    const body = req.body as UpdateInventoryItemInput;
     const updated = await InventoryItem.findByIdAndUpdate(
       req.params["id"],
-      { ...req.body, ...(req.body.category && { category: normaliseCategory(req.body.category) }) },
+      { ...body, ...(body.category && { category: normaliseCategory(body.category) }) },
       { new: true, runValidators: true }
     );
-    if (!updated) { res.status(404).json({ success: false, message: "Item not found" }); return; }
+    if (!updated) throw AppError.notFound("Item not found");
     res.json({ success: true, message: "Item updated", data: updated });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to update item", error: String(error) });
+    next(error);
   }
 };
 
 /** DELETE /api/inventory/:id */
-export const deleteItem = async (req: Request, res: Response): Promise<void> => {
+export const deleteItem = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    await InventoryItem.findByIdAndDelete(req.params["id"]);
+    const deleted = await InventoryItem.findByIdAndDelete(req.params["id"]);
+    if (!deleted) throw AppError.notFound("Item not found");
     res.json({ success: true, message: "Item deleted" });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to delete item", error: String(error) });
+    next(error);
   }
 };
 
 /** DELETE /api/inventory?ngoId=xxx — clear all items for an NGO */
-export const clearInventory = async (req: Request, res: Response): Promise<void> => {
+export const clearInventory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const ngoId = String(req.query["ngoId"] ?? "");
-    if (!ngoId) { res.status(400).json({ success: false, message: "ngoId required" }); return; }
+    if (!ngoId) throw AppError.badRequest("ngoId required");
     const result = await InventoryItem.deleteMany({ ngoId });
     res.json({ success: true, message: `Cleared ${result.deletedCount} items` });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Clear failed", error: String(error) });
+    next(error);
   }
 };

@@ -227,8 +227,8 @@ export class RoutingService {
   private async scoreAndRank<T extends { _id: string; name: string; organizationName?: string | undefined }>(ngos: T[]) {
     const scored = await Promise.all(
       ngos.map(async (ngo) => {
-        const userId = ngo._id;
-        const activeRequests = await ReliefRequest.countDocuments({
+        const userId = (ngo._id as { toString(): string }).toString();
+        const activeRequests = await (ReliefRequest as any).countDocuments({
           assignedNGO: userId,
           status: { $nin: ["completed", "rejected", "escalated", "resolved"] },
         });

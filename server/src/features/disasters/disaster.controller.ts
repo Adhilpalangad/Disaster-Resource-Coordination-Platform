@@ -1,73 +1,88 @@
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import { Disaster } from "./disaster.model.js";
-import type { IDisaster } from "./disaster.model.js";
 import { VolunteerDisasterResponse } from "./volunteer-response.model.js";
 import { User } from "../auth/user.model.js";
 import { notificationService } from "../notifications/notification.service.js";
+import { AppError } from "../../utils/AppError.js";
+import { getPagination, buildPaginationMeta } from "../../utils/pagination.js";
+import { buildSearchFilter } from "../../utils/search.js";
+import type { CreateDisasterInput, UpdateDisasterInput } from "./disaster.validation.js";
+
+const SEARCH_FIELDS = ["title", "description", "type", "affectedDistrictNames"];
 
 // ── Read ──────────────────────────────────────────────────────────────────────
 
-export const getAllDisasters = async (_req: Request, res: Response): Promise<void> => {
+/** GET /api/disasters — supports ?search=, ?page=, ?limit=, ?skip= (all optional,
+ *  backward-compatible: with none supplied, behaves exactly as before). */
+export const getAllDisasters = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const data = await Disaster.find().sort({ startedAt: -1 });
-    res.json({ success: true, data });
+    const filter = { ...buildSearchFilter(req.query["search"], SEARCH_FIELDS) };
+    const pagination = getPagination(req.query);
+
+    if (!pagination.applied) {
+      const data = await Disaster.find(filter).sort({ startedAt: -1 });
+      res.json({ success: true, data, ...buildPaginationMeta(data.length, pagination) });
+      return;
+    }
+
+    const [data, total] = await Promise.all([
+      Disaster.find(filter).sort({ startedAt: -1 }).skip(pagination.skip).limit(pagination.limit),
+      Disaster.countDocuments(filter),
+    ]);
+    res.json({ success: true, data, ...buildPaginationMeta(total, pagination) });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to fetch disasters", error: String(err) });
+    next(err);
   }
 };
 
-export const getActiveDisasters = async (_req: Request, res: Response): Promise<void> => {
+export const getActiveDisasters = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const data = await Disaster.find({ status: { $in: ["active", "monitoring"] } }).sort({ startedAt: -1 });
-    res.json({ success: true, data });
+    const filter: Record<string, unknown> = { status: { $in: ["active", "monitoring"] } };
+    Object.assign(filter, buildSearchFilter(req.query["search"], SEARCH_FIELDS));
+    const pagination = getPagination(req.query);
+
+    if (!pagination.applied) {
+      const data = await Disaster.find(filter).sort({ startedAt: -1 });
+      res.json({ success: true, data, ...buildPaginationMeta(data.length, pagination) });
+      return;
+    }
+
+    const [data, total] = await Promise.all([
+      Disaster.find(filter).sort({ startedAt: -1 }).skip(pagination.skip).limit(pagination.limit),
+      Disaster.countDocuments(filter),
+    ]);
+    res.json({ success: true, data, ...buildPaginationMeta(total, pagination) });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to fetch disasters", error: String(err) });
+    next(err);
   }
 };
 
-export const getDisasterById = async (req: Request, res: Response): Promise<void> => {
+export const getDisasterById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const doc = await Disaster.findById(req.params.id);
-    if (!doc) { res.status(404).json({ success: false, message: "Disaster not found" }); return; }
+    const doc = await Disaster.findById(req.params["id"]);
+    if (!doc) throw AppError.notFound("Disaster not found");
     res.json({ success: true, data: doc });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to fetch disaster", error: String(err) });
+    next(err);
   }
 };
 
 // ── Create ────────────────────────────────────────────────────────────────────
 
-export const createDisaster = async (req: Request, res: Response): Promise<void> => {
+export const createDisaster = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const {
-      title, type, severity, status,
-      affectedDistrictIds, affectedDistrictNames,
-      startedAt, description,
-    } = req.body as {
-      title: string;
-      type: IDisaster["type"];
-      severity: IDisaster["severity"];
-      status: IDisaster["status"];
-      affectedDistrictIds: string[];
-      affectedDistrictNames: string[];
-      startedAt?: string;
-      description: string;
-    };
-
-    if (!title?.trim() || !type || !description?.trim()) {
-      res.status(400).json({ success: false, message: "title, type, and description are required" });
-      return;
-    }
+    // req.body was already validated/coerced by validateBody(createDisasterSchema) in disaster.routes.ts
+    const parsed = req.body as CreateDisasterInput;
 
     const doc = await Disaster.create({
-      title:                title.trim(),
-      type,
-      severity:             severity ?? "high",
-      status:               status   ?? "active",
-      affectedDistrictIds:  affectedDistrictIds  ?? [],
-      affectedDistrictNames: affectedDistrictNames ?? [],
-      startedAt:            startedAt ? new Date(startedAt) : new Date(),
-      description:          description.trim(),
+      title:                  parsed.title,
+      type:                   parsed.type,
+      severity:                parsed.severity ?? "high",
+      status:                  parsed.status   ?? "active",
+      affectedDistrictIds:     parsed.affectedDistrictIds  ?? [],
+      affectedDistrictNames:   parsed.affectedDistrictNames ?? [],
+      startedAt:                parsed.startedAt ? new Date(parsed.startedAt) : new Date(),
+      description:              parsed.description,
     });
 
     res.status(201).json({ success: true, data: doc });
@@ -75,7 +90,7 @@ export const createDisaster = async (req: Request, res: Response): Promise<void>
     // ── Fire-and-forget: notify all volunteers in affected districts ──────────
     setImmediate(async () => {
       try {
-        const names: string[] = affectedDistrictNames ?? [];
+        const names: string[] = parsed.affectedDistrictNames ?? [];
         if (names.length === 0) return;
 
         const volunteers = await User.find({ role: "volunteer", district: { $in: names } })
@@ -107,56 +122,44 @@ export const createDisaster = async (req: Request, res: Response): Promise<void>
       }
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to create disaster", error: String(err) });
+    next(err);
   }
 };
 
 // ── Update ────────────────────────────────────────────────────────────────────
 
-export const updateDisaster = async (req: Request, res: Response): Promise<void> => {
+export const updateDisaster = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const {
-      title, type, severity, status,
-      affectedDistrictIds, affectedDistrictNames,
-      startedAt, description,
-    } = req.body as Partial<{
-      title: string;
-      type: IDisaster["type"];
-      severity: IDisaster["severity"];
-      status: IDisaster["status"];
-      affectedDistrictIds: string[];
-      affectedDistrictNames: string[];
-      startedAt: string;
-      description: string;
-    }>;
+    // req.body was already validated/coerced by validateBody(updateDisasterSchema) in disaster.routes.ts
+    const parsed = req.body as UpdateDisasterInput;
 
     const update: Record<string, unknown> = {};
-    if (title !== undefined)                 update.title                  = title.trim();
-    if (type !== undefined)                  update.type                   = type;
-    if (severity !== undefined)              update.severity               = severity;
-    if (status !== undefined)                update.status                 = status;
-    if (affectedDistrictIds !== undefined)   update.affectedDistrictIds    = affectedDistrictIds;
-    if (affectedDistrictNames !== undefined) update.affectedDistrictNames  = affectedDistrictNames;
-    if (startedAt !== undefined)             update.startedAt              = new Date(startedAt);
-    if (description !== undefined)           update.description            = description.trim();
+    if (parsed.title !== undefined)                 update.title                  = parsed.title;
+    if (parsed.type !== undefined)                  update.type                   = parsed.type;
+    if (parsed.severity !== undefined)              update.severity               = parsed.severity;
+    if (parsed.status !== undefined)                update.status                 = parsed.status;
+    if (parsed.affectedDistrictIds !== undefined)   update.affectedDistrictIds    = parsed.affectedDistrictIds;
+    if (parsed.affectedDistrictNames !== undefined) update.affectedDistrictNames  = parsed.affectedDistrictNames;
+    if (parsed.startedAt !== undefined)             update.startedAt              = new Date(parsed.startedAt);
+    if (parsed.description !== undefined)           update.description            = parsed.description;
 
-    const doc = await Disaster.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
-    if (!doc) { res.status(404).json({ success: false, message: "Disaster not found" }); return; }
+    const doc = await Disaster.findByIdAndUpdate(req.params["id"], update, { new: true, runValidators: true });
+    if (!doc) throw AppError.notFound("Disaster not found");
     res.json({ success: true, data: doc });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to update disaster", error: String(err) });
+    next(err);
   }
 };
 
 // ── Delete ────────────────────────────────────────────────────────────────────
 
-export const deleteDisaster = async (req: Request, res: Response): Promise<void> => {
+export const deleteDisaster = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const doc = await Disaster.findByIdAndDelete(req.params.id);
-    if (!doc) { res.status(404).json({ success: false, message: "Disaster not found" }); return; }
+    const doc = await Disaster.findByIdAndDelete(req.params["id"]);
+    if (!doc) throw AppError.notFound("Disaster not found");
     res.json({ success: true, message: "Disaster deleted" });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to delete disaster", error: String(err) });
+    next(err);
   }
 };
 
@@ -165,30 +168,22 @@ export const deleteDisaster = async (req: Request, res: Response): Promise<void>
 /** POST /api/disasters/:id/volunteer-response
  *  Body: { status: "available" | "unavailable" }
  *  Volunteer records (or updates) their opt-in status for a disaster. */
-export const respondToDisaster = async (req: Request, res: Response): Promise<void> => {
+export const respondToDisaster = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user) {
-      res.status(401).json({ success: false, message: "Unauthorized" });
-      return;
-    }
-    const { status } = req.body as { status: "available" | "unavailable" };
-    if (!["available", "unavailable"].includes(status)) {
-      res.status(400).json({ success: false, message: "status must be 'available' or 'unavailable'" });
-      return;
-    }
+    if (!req.user) throw AppError.unauthorized("Unauthorized");
 
-    const disaster = await Disaster.findById(req.params.id);
-    if (!disaster) {
-      res.status(404).json({ success: false, message: "Disaster not found" });
-      return;
-    }
+    // req.body was already validated by validateBody(volunteerResponseSchema) in disaster.routes.ts
+    const { status } = req.body as { status: "available" | "unavailable" };
+
+    const disaster = await Disaster.findById(req.params["id"]);
+    if (!disaster) throw AppError.notFound("Disaster not found");
 
     const volunteerId = (req.user._id as { toString(): string }).toString();
 
     const response = await VolunteerDisasterResponse.findOneAndUpdate(
-      { disasterId: req.params.id, volunteerId } as any,
+      { disasterId: req.params["id"], volunteerId },
       {
-        disasterId:     req.params.id,
+        disasterId:     req.params["id"],
         volunteerId,
         volunteerName:  req.user.name,
         volunteerEmail: req.user.email,
@@ -201,26 +196,26 @@ export const respondToDisaster = async (req: Request, res: Response): Promise<vo
 
     res.json({ success: true, data: response });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to save response", error: String(err) });
+    next(err);
   }
 };
 
 /** GET /api/disasters/:id/volunteer-responses
  *  Returns all volunteer opt-in responses for a given disaster. */
-export const getVolunteerResponses = async (req: Request, res: Response): Promise<void> => {
+export const getVolunteerResponses = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const responses = await VolunteerDisasterResponse.find({ disasterId: req.params.id } as any)
+    const responses = await VolunteerDisasterResponse.find({ disasterId: req.params["id"] })
       .sort({ respondedAt: -1 })
       .lean();
     res.json({ success: true, data: responses });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to fetch responses", error: String(err) });
+    next(err);
   }
 };
 
 // ── Seed ──────────────────────────────────────────────────────────────────────
 
-export const seedDisasters = async (_req: Request, res: Response): Promise<void> => {
+export const seedDisasters = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const existing = await Disaster.countDocuments();
     if (existing > 0) {
@@ -259,6 +254,6 @@ export const seedDisasters = async (_req: Request, res: Response): Promise<void>
 
     res.status(201).json({ success: true, message: "Demo disaster data seeded successfully" });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Seed failed", error: String(err) });
+    next(err);
   }
 };

@@ -43,9 +43,9 @@ export const Dashboard: React.FC = () => {
   }, [user]);
 
 
-  const pending  = requests.filter(r => STATUS_GROUPS.pending.includes(r.status as RequestStatus)).length;
-  const active   = requests.filter(r => STATUS_GROUPS.active.includes(r.status as RequestStatus)).length;
-  const resolved = requests.filter(r => STATUS_GROUPS.completed.includes(r.status as RequestStatus)).length;
+  const pending  = requests.filter(r => r.status === "pending" || r.status === "location_routed").length;
+  const active   = requests.filter(r => ["ngo_assigned", "ngo_accepted", "verified", "resources_reserved", "volunteer_assigned", "in_transit"].includes(r.status)).length;
+  const resolved = requests.filter(r => r.status === "completed" || r.status === "delivered").length;
   const recent   = requests.slice(0, 5);
 
   const kpis = [

@@ -22,7 +22,7 @@ export const inventoryApi = {
   getAll: (ngoId?: string) =>
     api.get<{ data: InventoryItem[]; summary: { total: number; byCategory: Record<string, number> } }>(
       ngoId ? `/inventory?ngoId=${ngoId}` : "/inventory"
-    ).then((r) => r.data),
+    ).then(r => r.data),
 
   /** Upload Excel → returns parsed rows (no DB write yet) */
   parseExcel: (file: File) => {
