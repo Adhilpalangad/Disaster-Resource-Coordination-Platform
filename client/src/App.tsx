@@ -55,6 +55,7 @@ import ManageDisasters from "./pages/admin/ManageDisasters.js";
 import ManageResources from "./pages/admin/ManageResources.js";
 import Analytics from "./pages/admin/Analytics.js";
 import SystemSettings from "./pages/admin/SystemSettings.js";
+import ManageDuplicates from "./pages/admin/ManageDuplicates.js";
 
 // ── Root redirect: logged-in users go straight to their dashboard ──────────────
 const RootRedirect = () => {
@@ -127,6 +128,7 @@ export function App() {
             <Route path="/admin/volunteers" element={<ManageVolunteers />} />
             <Route path="/admin/disasters" element={<ManageDisasters />} />
             <Route path="/admin/resources" element={<ManageResources />} />
+            <Route path="/admin/duplicates" element={<ManageDuplicates />} />
             <Route path="/admin/analytics" element={<Analytics />} />
             <Route path="/admin/settings" element={<SystemSettings />} />
           </Route>

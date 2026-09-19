@@ -39,15 +39,11 @@ interface TimelineStep {
   done:  boolean;
 }
 
+import { ORDERED_REQUEST_STATUSES } from "@disaster-platform/shared";
+
 function buildTimeline(req: ReliefRequest): TimelineStep[] {
   const s = req.status as RequestStatus;
-
-  const ORDERED: RequestStatus[] = [
-    "pending", "location_routed", "ngo_assigned", "ngo_accepted",
-    "verified", "resources_reserved", "volunteer_assigned",
-    "in_transit", "delivered", "completed",
-  ];
-  const idx = ORDERED.indexOf(s);
+  const idx = ORDERED_REQUEST_STATUSES.indexOf(s);
 
   return [
     {

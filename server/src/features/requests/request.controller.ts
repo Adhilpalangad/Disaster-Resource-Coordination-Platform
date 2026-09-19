@@ -3,6 +3,10 @@ import { ReliefRequest } from "./request.model.js";
 import { routingService } from "./routing.service.js";
 import type { IRequestLocation } from "./request.model.js";
 import { notificationService } from "../notifications/notification.service.js";
+import {
+  evaluateDuplicateSubmission,
+  validateAndConsumeConfirmToken,
+} from "./duplicate.service.js";
 
 // ── Create ────────────────────────────────────────────────────────────────────
 export const createRequest = async (req: Request, res: Response): Promise<void> => {
@@ -11,7 +15,10 @@ export const createRequest = async (req: Request, res: Response): Promise<void> 
       createdBy, fullName, mobileNumber, peopleAffected,
       disasterId, disasterName,
       category, urgency, description,
+      confirmToken: bodyConfirmToken,
     } = req.body;
+
+    const confirmToken = (req.headers["x-confirm-duplicate-token"] as string) || bodyConfirmToken;
 
     // Deserialise JSON-stringified fields from multipart FormData
     const location: IRequestLocation =
@@ -41,6 +48,51 @@ export const createRequest = async (req: Request, res: Response): Promise<void> 
     if (!location?.districtId || !location?.talukId || !location?.localBodyId) {
       res.status(400).json({ success: false, message: "Incomplete location: district, taluk and local body are required" });
       return;
+    }
+
+    // ── Duplicate Detection Check ──────────────────────────────────────────
+    let isConfirmedOverride = false;
+    if (confirmToken) {
+      isConfirmedOverride = await validateAndConsumeConfirmToken(confirmToken, createdBy);
+    }
+
+    let duplicateOfId: string | undefined;
+
+    if (!isConfirmedOverride) {
+      const dupCheck = await evaluateDuplicateSubmission(
+        {
+          category,
+          description,
+          location,
+          urgency,
+          peopleAffected: parseInt(peopleAffected, 10),
+        },
+        createdBy,
+        fullName,
+        mobileNumber
+      );
+
+      if (dupCheck.isDuplicate) {
+        if (dupCheck.action === "block") {
+          res.status(409).json({
+            success: false,
+            isDuplicate: true,
+            action: "block",
+            message: "A similar active request was already submitted by you recently. Please check your existing request status before submitting again.",
+            duplicate: dupCheck,
+          });
+          return;
+        } else if (dupCheck.action === "warn") {
+          res.status(409).json({
+            success: false,
+            isDuplicate: true,
+            action: "warn",
+            message: "A similar request was found in your active requests. If this is a distinct need, you can proceed.",
+            duplicate: dupCheck,
+          });
+          return;
+        }
+      }
     }
 
     let imageUrl: string | undefined;
@@ -191,6 +243,25 @@ export const ngoAcceptRequest = async (req: Request, res: Response): Promise<voi
     );
     if (!updated) { res.status(404).json({ success: false, message: "Request not found" }); return; }
 
+    // Automatically consolidate & remove duplicate sibling requests from the NGO queue
+    const duplicateFilter: Record<string, any> = {
+      _id: { $ne: updated._id },
+      category: updated.category,
+      status: { $nin: ["completed", "delivered", "rejected", "closed", "duplicate_detected"] },
+      $or: [
+        { createdBy: updated.createdBy },
+        ...(updated.mobileNumber ? [{ mobileNumber: updated.mobileNumber }] : []),
+        ...(updated.fullName ? [{ fullName: new RegExp(`^${updated.fullName.trim()}$`, "i") }] : []),
+      ],
+    };
+
+    await ReliefRequest.updateMany(duplicateFilter, {
+      $set: {
+        status: "duplicate_detected",
+        duplicateOf: updated._id.toString(),
+      },
+    });
+
     notificationService.send({
       userId:    updated.createdBy,
       title:     "Your Request Has Been Accepted",
@@ -201,7 +272,7 @@ export const ngoAcceptRequest = async (req: Request, res: Response): Promise<voi
       link:      `/requests/${updated._id}`,
     }).catch(console.error);
 
-    res.json({ success: true, message: "Request accepted", data: updated });
+    res.json({ success: true, message: "Request accepted and duplicate requests auto-consolidated", data: updated });
   } catch (error) {
     res.status(500).json({ success: false, message: "Accept failed", error: String(error) });
   }

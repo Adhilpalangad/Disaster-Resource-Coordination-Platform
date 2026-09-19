@@ -182,18 +182,52 @@ export class RoutingService {
     }
   }
 
-  // ── Private Helpers ────────────────────────────────────────────────────────
+  /** Find NGO users whose service area or district matches the request location */
+  private async findEligibleNGOs(location: IRequestLocation): Promise<Array<{ _id: string; name: string; organizationName?: string | undefined; email: string }>> {
+    const { NGOProfile } = await import("../ngos/ngo.model.js");
 
-  /** Find NGO users whose district matches the request district */
-  private async findEligibleNGOs(location: IRequestLocation) {
-    return User.find({ role: "ngo", district: location.districtName }).lean();
+    // 1. Check registered NGO profiles by service areas (districtId, talukId, or districtName)
+    const profiles = await NGOProfile.find({
+      isActive: true,
+      $or: [
+        { "serviceAreas.districtIds": location.districtId },
+        { "serviceAreas.districtIds": location.districtName },
+        { "serviceAreas.talukIds": location.talukId },
+        { "serviceAreas.localBodyIds": location.localBodyId },
+      ],
+    }).lean();
+
+    if (profiles.length > 0) {
+      return profiles.map((p) => ({
+        _id: p.userId,
+        name: p.orgName,
+        organizationName: p.orgName,
+        email: p.email,
+      }));
+    }
+
+    // 2. Fallback to User collection matching district name or ID
+    const users = await User.find({
+      role: "ngo",
+      $or: [
+        { district: location.districtName },
+        { district: location.districtId },
+      ],
+    }).lean();
+
+    return users.map((u) => ({
+      _id: (u._id as { toString(): string }).toString(),
+      name: u.name,
+      organizationName: u.organizationName ?? undefined,
+      email: u.email,
+    }));
   }
 
   /** Rank NGOs by fewest active requests (least loaded first) */
-  private async scoreAndRank(ngos: Awaited<ReturnType<typeof this.findEligibleNGOs>>) {
+  private async scoreAndRank<T extends { _id: string; name: string; organizationName?: string | undefined }>(ngos: T[]) {
     const scored = await Promise.all(
       ngos.map(async (ngo) => {
-        const userId = (ngo._id as { toString(): string }).toString();
+        const userId = ngo._id;
         const activeRequests = await ReliefRequest.countDocuments({
           assignedNGO: userId,
           status: { $nin: ["completed", "rejected", "escalated", "resolved"] },

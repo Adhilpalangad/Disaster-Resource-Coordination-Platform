@@ -8,6 +8,11 @@ import {
   verifyRequest, rejectRequest, ngoAcceptRequest, reserveResources, assignVolunteer,
   markInTransit, markDelivered, confirmDelivery,
 } from "./request.controller.js";
+import {
+  getDuplicateLogs,
+  overrideDuplicateAttempt,
+  getDuplicateLogsForRequest,
+} from "./duplicate.controller.js";
 import { requireAuth } from "../../middleware/auth.middleware.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -38,6 +43,11 @@ const upload = multer({
 });
 
 const router = Router();
+
+// Duplicate Management Routes (Must precede /:id)
+router.get("/duplicates/logs", requireAuth, getDuplicateLogs);
+router.post("/duplicates/logs/:logId/override", requireAuth, overrideDuplicateAttempt);
+router.get("/:requestId/duplicates", requireAuth, getDuplicateLogsForRequest);
 
 // CRUD
 router.post("/",    upload.single("image"), createRequest);

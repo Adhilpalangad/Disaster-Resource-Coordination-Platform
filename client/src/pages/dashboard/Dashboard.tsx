@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   AlertTriangle, FileText, Home, Users,
@@ -6,7 +6,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.js";
 import { requestsApi } from "../../services/requestsApi.js";
-import type { ReliefRequest } from "../../types/index.js";
+import { STATUS_GROUPS } from "@disaster-platform/shared";
+import type { RequestStatus, ReliefRequest } from "@disaster-platform/shared";
 import PageContainer from "../../components/PageContainer.js";
 import PageHeader from "../../components/PageHeader.js";
 import Card from "../../components/Card.js";
@@ -41,11 +42,10 @@ export const Dashboard: React.FC = () => {
     }
   }, [user]);
 
-  useEffect(() => { fetchRequests(); }, [fetchRequests]);
 
-  const pending  = requests.filter(r => r.status === "pending_verification").length;
-  const active   = requests.filter(r => ["verified", "assigned", "in_progress"].includes(r.status)).length;
-  const resolved = requests.filter(r => r.status === "resolved").length;
+  const pending  = requests.filter(r => STATUS_GROUPS.pending.includes(r.status as RequestStatus)).length;
+  const active   = requests.filter(r => STATUS_GROUPS.active.includes(r.status as RequestStatus)).length;
+  const resolved = requests.filter(r => STATUS_GROUPS.completed.includes(r.status as RequestStatus)).length;
   const recent   = requests.slice(0, 5);
 
   const kpis = [
