@@ -311,7 +311,17 @@ export const NgoRequests: React.FC = () => {
     }
   };
 
-  const handleAccept    = (id: string) => act(id, () => requestsApi.accept(id));
+  const handleAccept = async (id: string) => {
+    setActionLoading(id);
+    try {
+      await requestsApi.accept(id);
+      await fetchRequests();
+    } catch {
+      alert("Accept failed. Please try again.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
   const handleVerify    = (id: string) => act(id, () => requestsApi.verify(id));
   const handleReserve   = (id: string) => act(id, () => requestsApi.reserveResources(id));
   const handleInTransit = (id: string) => act(id, () => requestsApi.markInTransit(id));
@@ -429,9 +439,28 @@ export const NgoRequests: React.FC = () => {
             const actions  = getActions(req);
             const expanded = expandedId === req._id;
 
+            const isDup =
+              (req.duplicateAttempts ?? 0) > 0 ||
+              !!req.duplicateOf ||
+              allRequests.some((other) => {
+                const otherId = (other as any)._id || (other as any).id;
+                const reqId = (req as any)._id || (req as any).id;
+                if (otherId && reqId && String(otherId) === String(reqId)) return false;
+                if (other === req) return false;
+
+                const samePerson =
+                  (req.createdBy && other.createdBy && req.createdBy === other.createdBy) ||
+                  (req.mobileNumber && other.mobileNumber && req.mobileNumber === other.mobileNumber) ||
+                  (req.fullName && other.fullName && req.fullName.trim().toLowerCase() === other.fullName.trim().toLowerCase());
+
+                const sameCategory = req.category === other.category;
+
+                return samePerson && sameCategory;
+              });
+
             return (
               <div
-                key={req._id}
+                key={req._id || (req as any).id}
                 style={{ backgroundColor: "var(--card-bg)", border: "1px solid var(--border)", borderLeft: `4px solid ${urgColor}`, borderRadius: "12px", overflow: "hidden", boxShadow: "var(--shadow)" }}
               >
                 {/* Card header row */}
@@ -444,6 +473,24 @@ export const NgoRequests: React.FC = () => {
                       <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-h)", textTransform: "capitalize" }}>{req.category}</span>
                       <span style={{ fontSize: "10px", fontWeight: 700, padding: "2px 7px", borderRadius: "99px", backgroundColor: `${urgColor}18`, color: urgColor, textTransform: "uppercase" }}>{req.urgency}</span>
                       <StatusBadge status={req.status} />
+                      {isDup && (
+                        <span
+                          title="Duplicate request detected from same citizen"
+                          style={{
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            padding: "3px 9px",
+                            borderRadius: "99px",
+                            backgroundColor: "rgba(239,68,68,0.15)",
+                            color: "var(--danger)",
+                            border: "1px solid rgba(239,68,68,0.4)",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}>
+                          <AlertTriangle size={12} /> Duplicate Detected
+                        </span>
+                      )}
                     </div>
                     <p style={{ margin: "0 0 5px", fontSize: "13px", color: "var(--text-h)", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
                       {req.description}
@@ -529,6 +576,12 @@ export const NgoRequests: React.FC = () => {
                             ETA: {new Date(req.estimatedArrival).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                           </p>
                         )}
+                      </div>
+                    )}
+                    {isDup && (
+                      <div style={{ gridColumn: "1/-1", padding: "10px 14px", borderRadius: "8px", backgroundColor: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", fontSize: "12px", color: "var(--danger)", display: "flex", alignItems: "center", gap: "8px" }}>
+                        <AlertTriangle size={15} />
+                        <span><strong>Potential Duplicate Submission:</strong> Multiple active requests for "{req.category}" have been submitted by {req.fullName || "this citizen"}. Please verify before assigning resources.</span>
                       </div>
                     )}
                     {req.status === "rejected" && req.verificationNote && (

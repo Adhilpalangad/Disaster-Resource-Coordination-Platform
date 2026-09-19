@@ -35,5 +35,9 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
+    "paths": {
+      "@disaster-platform/shared": ["../shared/src/index.ts"],
+      "@disaster-platform/shared/*": ["../shared/src/*"]
+    }
   }
 }

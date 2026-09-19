@@ -1,0 +1,15 @@
+{
+  "name": "@disaster-platform/shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./data/keralaLocations": "./src/data/keralaLocations.ts",
+    "./types": "./src/types/index.ts",
+    "./constants/requestLifecycle": "./src/constants/requestLifecycle.ts",
+    "./constants/duplicateDetection": "./src/constants/duplicateDetection.ts"
+  }
+}

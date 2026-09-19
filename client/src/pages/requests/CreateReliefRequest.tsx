@@ -170,31 +170,66 @@ export const CreateReliefRequest: React.FC = () => {
   const goNext = () => { if (validateStep(step)) setStep((s) => s + 1); };
   const goBack = () => { setErrors({}); setStep((s) => s - 1); };
 
+  // ── Duplicate State ──────────────────────────────────────────────────────────
+  const [duplicateModal, setDuplicateModal] = useState<{
+    isOpen: boolean;
+    action: "warn" | "block";
+    confirmToken?: string;
+    existingRequestId?: string;
+    existingRequest?: { category: string; description: string; status: string; createdAt: string };
+    score: number;
+    breakdown?: { categoryScore: number; locationScore: number; descriptionScore: number; temporalMultiplier: number };
+  }>({
+    isOpen: false,
+    action: "warn",
+    score: 0,
+  });
+
   // ── Submit ──────────────────────────────────────────────────────────────────
-  const handleSubmit = async () => {
+  const handleSubmit = async (confirmTokenOverride?: string) => {
     if (!user) return;
     setSubmitting(true);
     setSubmitError("");
     try {
-      await requestsApi.create({
-        createdBy:      user.id,
-        fullName:       formData.fullName,
-        mobileNumber:   formData.mobileNumber,
-        peopleAffected: formData.peopleAffected,
-        ageGroups:      formData.ageGroups,
-        specialNeeds:   formData.specialNeeds,
-        disasterId:     formData.disasterId || undefined,
-        disasterName:   formData.disasterName || undefined,
-        category:       formData.category,
-        urgency:        formData.urgency,
-        description:    formData.description,
-        location:       formData.location,
-        image:          formData.imageFile ?? undefined,
-      });
+      await requestsApi.create(
+        {
+          createdBy:      user.id,
+          fullName:       formData.fullName,
+          mobileNumber:   formData.mobileNumber,
+          peopleAffected: formData.peopleAffected,
+          ageGroups:      formData.ageGroups,
+          specialNeeds:   formData.specialNeeds,
+          disasterId:     formData.disasterId || undefined,
+          disasterName:   formData.disasterName || undefined,
+          category:       formData.category,
+          urgency:        formData.urgency,
+          description:    formData.description,
+          location:       formData.location,
+          image:          formData.imageFile ?? undefined,
+        },
+        confirmTokenOverride
+      );
+      setDuplicateModal({ isOpen: false, action: "warn", score: 0 });
       setSuccess(true);
       setTimeout(() => navigate("/requests"), 2200);
-    } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Failed to submit. Please try again.");
+    } catch (err: any) {
+      const responseData = err?.response?.data;
+      if (responseData?.isDuplicate && responseData?.duplicate) {
+        const dup = responseData.duplicate;
+        setDuplicateModal({
+          isOpen: true,
+          action: responseData.action || dup.action,
+          confirmToken: dup.confirmToken,
+          existingRequestId: dup.existingRequestId,
+          existingRequest: dup.existingRequest,
+          score: dup.score,
+          breakdown: dup.breakdown,
+        });
+      } else {
+        setSubmitError(
+          responseData?.message || (err instanceof Error ? err.message : "Failed to submit. Please try again.")
+        );
+      }
     } finally {
       setSubmitting(false);
     }
@@ -482,7 +517,7 @@ export const CreateReliefRequest: React.FC = () => {
           </button>
         )}
         <button
-          onClick={step < STEPS.length - 1 ? goNext : handleSubmit}
+          onClick={step < STEPS.length - 1 ? goNext : () => handleSubmit()}
           disabled={submitting}
           style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "12px 20px", borderRadius: "10px", border: "none", backgroundColor: submitting ? "var(--secondary)" : "var(--primary)", color: "#fff", fontWeight: 700, fontSize: "14px", cursor: submitting ? "not-allowed" : "pointer", transition: "background-color 0.15s" }}>
           {step < STEPS.length - 1
@@ -490,6 +525,106 @@ export const CreateReliefRequest: React.FC = () => {
             : submitting ? "Submitting…" : "Submit Relief Request"}
         </button>
       </div>
+
+      {/* ── Duplicate Detection Modal ────────────────────────────────────────── */}
+      {duplicateModal.isOpen && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15,23,42,0.65)", backdropFilter: "blur(6px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+          <div style={{ width: "100%", maxWidth: "540px", backgroundColor: "var(--card-bg)", borderRadius: "18px", border: "1px solid var(--border)", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.3)", padding: "28px", display: "flex", flexDirection: "column", gap: "20px" }}>
+            
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "14px" }}>
+              <div style={{ width: "44px", height: "44px", borderRadius: "12px", backgroundColor: duplicateModal.action === "block" ? "rgba(239,68,68,0.12)" : "rgba(245,158,11,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <AlertTriangle size={24} color={duplicateModal.action === "block" ? "var(--danger)" : "var(--warning)"} />
+              </div>
+              <div>
+                <h3 style={{ margin: "0 0 6px", fontSize: "18px", fontWeight: 700, color: "var(--text-h)" }}>
+                  {duplicateModal.action === "block" ? "Duplicate Request Blocked" : "Possible Duplicate Request Detected"}
+                </h3>
+                <p style={{ margin: 0, fontSize: "13px", color: "var(--secondary)", lineHeight: 1.5 }}>
+                  {duplicateModal.action === "block"
+                    ? "You have an active request with matching details. To prevent duplicate processing by NGOs, new submissions are restricted."
+                    : "The system detected an existing active request with high similarity. Please review the matched request before proceeding."}
+                </p>
+              </div>
+            </div>
+
+            {/* Similarity Score & Breakdown */}
+            <div style={{ padding: "16px", borderRadius: "12px", backgroundColor: "var(--bg)", border: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--secondary)", textTransform: "uppercase", letterSpacing: "0.5px" }}>Similarity Match Score</span>
+                <span style={{ fontSize: "16px", fontWeight: 800, color: duplicateModal.score >= 90 ? "var(--danger)" : "var(--warning)" }}>
+                  {duplicateModal.score}% Match
+                </span>
+              </div>
+
+              {/* Progress bar */}
+              <div style={{ width: "100%", height: "8px", borderRadius: "4px", backgroundColor: "rgba(100,116,139,0.15)", overflow: "hidden" }}>
+                <div style={{ width: `${duplicateModal.score}%`, height: "100%", backgroundColor: duplicateModal.score >= 90 ? "var(--danger)" : "var(--warning)", transition: "width 0.4s ease" }} />
+              </div>
+
+              {/* Existing Request Summary */}
+              {duplicateModal.existingRequest && (
+                <div style={{ marginTop: "4px", padding: "12px", borderRadius: "8px", backgroundColor: "rgba(2,132,199,0.06)", border: "1px solid rgba(2,132,199,0.15)", fontSize: "12px" }}>
+                  <p style={{ margin: "0 0 4px", fontWeight: 700, color: "var(--text-h)" }}>
+                    Existing Request ({duplicateModal.existingRequest.category.toUpperCase()}) — Status: <span style={{ color: "var(--primary)" }}>{duplicateModal.existingRequest.status}</span>
+                  </p>
+                  <p style={{ margin: 0, color: "var(--secondary)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                    "{duplicateModal.existingRequest.description}"
+                  </p>
+                </div>
+              )}
+
+              {/* Detailed Breakdown */}
+              {duplicateModal.breakdown && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px", marginTop: "4px", textAlign: "center" }}>
+                  <div style={{ padding: "8px", borderRadius: "6px", backgroundColor: "var(--card-bg)" }}>
+                    <div style={{ fontSize: "11px", color: "var(--secondary)" }}>Category</div>
+                    <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-h)" }}>{duplicateModal.breakdown.categoryScore}%</div>
+                  </div>
+                  <div style={{ padding: "8px", borderRadius: "6px", backgroundColor: "var(--card-bg)" }}>
+                    <div style={{ fontSize: "11px", color: "var(--secondary)" }}>Location</div>
+                    <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-h)" }}>{duplicateModal.breakdown.locationScore}%</div>
+                  </div>
+                  <div style={{ padding: "8px", borderRadius: "6px", backgroundColor: "var(--card-bg)" }}>
+                    <div style={{ fontSize: "11px", color: "var(--secondary)" }}>Text Similarity</div>
+                    <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-h)" }}>{duplicateModal.breakdown.descriptionScore}%</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Action buttons */}
+            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                onClick={() => setDuplicateModal((m) => ({ ...m, isOpen: false }))}
+                style={{ padding: "10px 16px", borderRadius: "10px", border: "1px solid var(--border)", backgroundColor: "var(--bg)", color: "var(--text-h)", fontWeight: 600, fontSize: "13px", cursor: "pointer" }}>
+                Cancel
+              </button>
+
+              {duplicateModal.existingRequestId && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/requests/${duplicateModal.existingRequestId}`)}
+                  style={{ padding: "10px 16px", borderRadius: "10px", border: "1px solid var(--primary)", backgroundColor: "rgba(2,132,199,0.08)", color: "var(--primary)", fontWeight: 600, fontSize: "13px", cursor: "pointer" }}>
+                  View Existing Request
+                </button>
+              )}
+
+              {duplicateModal.action === "warn" && duplicateModal.confirmToken && (
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={() => handleSubmit(duplicateModal.confirmToken)}
+                  style={{ padding: "10px 18px", borderRadius: "10px", border: "none", backgroundColor: "var(--primary)", color: "#fff", fontWeight: 700, fontSize: "13px", cursor: "pointer" }}>
+                  {submitting ? "Submitting…" : "Submit Request Anyway"}
+                </button>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
     </PageContainer>
   );
 };

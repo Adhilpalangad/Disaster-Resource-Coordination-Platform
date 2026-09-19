@@ -1,14 +1,6 @@
 import api from "./api.js";
-import type { ReliefRequest } from "../types/index.js";
-import type { RequestLocation } from "../types/index.js";
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function extract<T>(res: { data: { data: T } }): T {
-  return res.data.data;
-}
-
-// ── Payload types ─────────────────────────────────────────────────────────────
+import { extractData, createResourceApi } from "./baseService.js";
+import type { ReliefRequest, RequestLocation } from "@disaster-platform/shared";
 
 export interface CreateRequestPayload {
   createdBy:      string;
@@ -36,22 +28,12 @@ export interface GetAllFilters {
   assignedVolunteer?: string;
 }
 
-// ── API ───────────────────────────────────────────────────────────────────────
+const baseRequests = createResourceApi<ReliefRequest, CreateRequestPayload, Partial<CreateRequestPayload>>("/requests");
 
 export const requestsApi = {
+  ...baseRequests,
 
-  getAll: (filters: GetAllFilters = {}) => {
-    const params = new URLSearchParams();
-    Object.entries(filters).forEach(([k, v]) => { if (v) params.set(k, v); });
-    return api
-      .get<{ data: ReliefRequest[] }>(`/requests?${params.toString()}`)
-      .then(extract);
-  },
-
-  getById: (id: string) =>
-    api.get<{ data: ReliefRequest }>(`/requests/${id}`).then(extract),
-
-  create: (payload: CreateRequestPayload) => {
+  create: (payload: CreateRequestPayload, confirmToken?: string) => {
     const form = new FormData();
     form.append("createdBy",      payload.createdBy);
     form.append("fullName",       payload.fullName);
@@ -66,29 +48,31 @@ export const requestsApi = {
     form.append("description", payload.description);
     form.append("location",    JSON.stringify(payload.location));
     if (payload.image) form.append("image", payload.image);
+    if (confirmToken)  form.append("confirmToken", confirmToken);
+
+    const headers: Record<string, string> = { "Content-Type": "multipart/form-data" };
+    if (confirmToken) {
+      headers["X-Confirm-Duplicate-Token"] = confirmToken;
+    }
 
     return api
-      .post<{ data: ReliefRequest }>("/requests", form, {
-        headers: { "Content-Type": "multipart/form-data" },
-      })
-      .then(extract);
+      .post<{ data: ReliefRequest }>("/requests", form, { headers })
+      .then(extractData);
   },
 
-  remove: (id: string) => api.delete(`/requests/${id}`),
-
   // ── NGO actions ─────────────────────────────────────────────────────────────
-  accept:           (id: string)              => api.post<{ data: ReliefRequest }>(`/requests/${id}/accept`).then(extract),
-  verify:           (id: string)              => api.post<{ data: ReliefRequest }>(`/requests/${id}/verify`).then(extract),
-  reject:           (id: string, note: string)=> api.post<{ data: ReliefRequest }>(`/requests/${id}/reject`, { note }).then(extract),
-  reserveResources: (id: string)              => api.post<{ data: ReliefRequest }>(`/requests/${id}/reserve-resources`).then(extract),
+  accept:           (id: string)               => api.post<{ data: ReliefRequest }>(`/requests/${id}/accept`).then(extractData),
+  verify:           (id: string)               => api.post<{ data: ReliefRequest }>(`/requests/${id}/verify`).then(extractData),
+  reject:           (id: string, note: string) => api.post<{ data: ReliefRequest }>(`/requests/${id}/reject`, { note }).then(extractData),
+  reserveResources: (id: string)               => api.post<{ data: ReliefRequest }>(`/requests/${id}/reserve-resources`).then(extractData),
   assignVolunteer:  (id: string, payload: { volunteerId: string; volunteerName: string; estimatedArrival?: string }) =>
-    api.post<{ data: ReliefRequest }>(`/requests/${id}/assign-volunteer`, payload).then(extract),
+    api.post<{ data: ReliefRequest }>(`/requests/${id}/assign-volunteer`, payload).then(extractData),
 
   // ── Volunteer actions ────────────────────────────────────────────────────────
-  markInTransit: (id: string) => api.post<{ data: ReliefRequest }>(`/requests/${id}/in-transit`).then(extract),
-  markDelivered: (id: string) => api.post<{ data: ReliefRequest }>(`/requests/${id}/delivered`).then(extract),
+  markInTransit: (id: string) => api.post<{ data: ReliefRequest }>(`/requests/${id}/in-transit`).then(extractData),
+  markDelivered: (id: string) => api.post<{ data: ReliefRequest }>(`/requests/${id}/delivered`).then(extractData),
 
   // ── Citizen confirmation ─────────────────────────────────────────────────────
   confirmDelivery: (id: string, feedback?: string) =>
-    api.post<{ data: ReliefRequest }>(`/requests/${id}/confirm`, { feedback }).then(extract),
+    api.post<{ data: ReliefRequest }>(`/requests/${id}/confirm`, { feedback }).then(extractData),
 };

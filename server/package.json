@@ -12,6 +12,7 @@
   "license": "ISC",
   "dependencies": {
     "@supabase/supabase-js": "^2.112.1",
+    "@disaster-platform/shared": "file:../shared",
     "@types/ws": "^8.18.1",
     "cloudinary": "^2.5.1",
     "cors": "^2.8.6",

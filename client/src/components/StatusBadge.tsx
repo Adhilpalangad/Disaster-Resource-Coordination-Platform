@@ -1,13 +1,8 @@
 import React from "react";
+import { STATUS_LABELS, STATUS_COLORS } from "@disaster-platform/shared";
+import type { RequestStatus } from "@disaster-platform/shared";
 
-export type StatusType =
-  | "pending" | "location_routed" | "ngo_assigned" | "ngo_accepted"
-  | "verified" | "resources_reserved" | "volunteer_assigned"
-  | "in_transit" | "delivered" | "completed"
-  | "rejected" | "escalated" | "closed"
-  // legacy
-  | "pending_verification" | "assigned" | "in_progress" | "resolved"
-  | string;
+export type StatusType = RequestStatus | string;
 
 interface StatusBadgeProps {
   status: StatusType;
@@ -62,15 +57,19 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, label, style =
   const key    = status?.toLowerCase() ?? "";
   const config = STATUS_CONFIG[key] ?? { color: "var(--secondary)", bg: "var(--accent-bg)", border: "var(--border)" };
   const text   = label ?? STATUS_LABEL[key] ?? key.replace(/_/g, " ").toUpperCase();
+export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, label, style = {} }) => {
+  const key = (status?.toLowerCase() ?? "") as RequestStatus;
+  const config = STATUS_COLORS[key] ?? { color: "#475569", bg: "rgba(71,85,105,0.1)", border: "#e2e8f0" };
+  const text = label ?? STATUS_LABELS[key] ?? (status ? status.replace(/_/g, " ").toUpperCase() : "UNKNOWN");
 
   return (
     <span
       style={{
         display: "inline-flex",
         alignItems: "center",
-        padding: "4px 12px",
-        borderRadius: "99px",
-        fontSize: "11.5px",
+        padding: "3px 10px",
+        borderRadius: "6px",
+        fontSize: "11px",
         fontWeight: 700,
         backgroundColor: config.bg,
         color: config.color,
@@ -81,7 +80,16 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, label, style =
         ...style,
       }}
     >
-      <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: config.color, marginRight: "6px", flexShrink: 0 }} />
+      <span
+        style={{
+          width: "5px",
+          height: "5px",
+          borderRadius: "50%",
+          backgroundColor: config.color,
+          marginRight: "5px",
+          flexShrink: 0,
+        }}
+      />
       {text}
     </span>
   );

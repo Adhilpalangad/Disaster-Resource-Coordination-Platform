@@ -7,10 +7,9 @@
     "types": ["vite/client"],
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
-    "ignoreDeprecations": "6.0",
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@disaster-platform/shared": ["../shared/src/index.ts"],
+      "@disaster-platform/shared/*": ["../shared/src/*"]
     },
 
     /* Bundler mode */

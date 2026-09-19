@@ -1,61 +1,21 @@
 import { Schema, model } from "mongoose";
+import type {
+  RequestCategory,
+  UrgencyLevel,
+  AgeGroup,
+  SpecialNeed,
+  RequestStatus,
+  RequestLocation as IRequestLocation,
+} from "@disaster-platform/shared";
 
-// ── Enums ─────────────────────────────────────────────────────────────────────
-
-export type RequestCategory =
-  | "food" | "water" | "medicine" | "shelter"
-  | "rescue" | "transportation" | "other";
-
-export type UrgencyLevel = "low" | "medium" | "high" | "critical";
-
-export type AgeGroup = "child" | "adult" | "elderly";
-
-export type SpecialNeed = "disabled" | "pregnant" | "medical_condition" | "none";
-
-/**
- * Full request lifecycle:
- *
- *  pending → location_routed → ngo_assigned → ngo_accepted
- *         → verified → resources_reserved → volunteer_assigned
- *         → in_transit → delivered → completed
- *
- * Side exits: rejected, escalated (no NGO found), closed (archived)
- */
-export type RequestStatus =
-  | "pending"            // submitted, routing not yet run
-  | "location_routed"    // location validated; routing engine searching for NGO
-  | "ngo_assigned"       // best NGO assigned, awaiting NGO acceptance
-  | "ngo_accepted"       // NGO accepted the request
-  | "verified"           // NGO verified request authenticity
-  | "resources_reserved" // NGO reserved required resources
-  | "volunteer_assigned" // volunteer assigned to deliver
-  | "in_transit"         // volunteer en route to citizen
-  | "delivered"          // delivered; awaiting citizen confirmation
-  | "completed"          // citizen confirmed receipt — request closed successfully
-  | "rejected"           // rejected by NGO or admin (with note)
-  | "escalated"          // no NGO accepted; escalated to admin
-  | "closed";            // manually archived
-
-// ── Sub-document interfaces ───────────────────────────────────────────────────
-
-export interface IRequestLocation {
-  stateId:        string;
-  stateName:      string;
-  districtId:     string;
-  districtName:   string;
-  talukId:        string;
-  talukName:      string;
-  localBodyId:    string;
-  localBodyName:  string;
-  localBodyType:  "panchayat" | "municipality" | "corporation";
-  wardId?:        string;
-  wardName?:      string;
-  landmark?:      string;
-  gpsLat?:        number;
-  gpsLng?:        number;
-  // Computed human-readable string stored for display/search
-  fullAddress?:   string;
-}
+export type {
+  RequestCategory,
+  UrgencyLevel,
+  AgeGroup,
+  SpecialNeed,
+  RequestStatus,
+  IRequestLocation,
+};
 
 export interface IRoutingHistoryEntry {
   ngoId:         string;
@@ -113,6 +73,10 @@ export interface IReliefRequest {
   citizenConfirmedAt?:  Date;
   citizenFeedback?:     string;
   completedAt?:         Date;
+
+  // Duplicate Detection Tracking
+  duplicateOf?:       string;   // original ReliefRequest _id
+  duplicateAttempts?: number;   // count of duplicate attempts logged against this request
 
   createdAt: Date;
   updatedAt: Date;
@@ -189,7 +153,7 @@ const ReliefRequestSchema = new Schema<IReliefRequest>(
         "pending", "location_routed", "ngo_assigned", "ngo_accepted",
         "verified", "resources_reserved", "volunteer_assigned",
         "in_transit", "delivered", "completed",
-        "rejected", "escalated", "closed",
+        "rejected", "escalated", "closed", "duplicate_detected"
       ],
       default: "pending",
     },
@@ -216,12 +180,17 @@ const ReliefRequestSchema = new Schema<IReliefRequest>(
     citizenConfirmedAt:  { type: Date },
     citizenFeedback:     { type: String },
     completedAt:         { type: Date },
+
+    // Duplicate tracking
+    duplicateOf:       { type: String },
+    duplicateAttempts: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
 
 // Indexes for common query patterns
 ReliefRequestSchema.index({ createdBy: 1, createdAt: -1 });
+ReliefRequestSchema.index({ createdBy: 1, category: 1, createdAt: -1 });
 ReliefRequestSchema.index({ status: 1, createdAt: -1 });
 ReliefRequestSchema.index({ assignedNGO: 1, status: 1 });
 ReliefRequestSchema.index({ "location.districtId": 1, status: 1 });
