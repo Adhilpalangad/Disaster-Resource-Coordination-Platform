@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
+      '@': path.resolve(__dirname, './src'),
       '@disaster-platform/shared': path.resolve(__dirname, '../shared/src/index.ts'),
     },
   },

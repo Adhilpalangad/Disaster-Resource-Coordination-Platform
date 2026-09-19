@@ -54,10 +54,6 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, label, style = {} }) => {
-  const key    = status?.toLowerCase() ?? "";
-  const config = STATUS_CONFIG[key] ?? { color: "var(--secondary)", bg: "var(--accent-bg)", border: "var(--border)" };
-  const text   = label ?? STATUS_LABEL[key] ?? key.replace(/_/g, " ").toUpperCase();
-export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, label, style = {} }) => {
   const key = (status?.toLowerCase() ?? "") as RequestStatus;
   const config = STATUS_COLORS[key] ?? { color: "#475569", bg: "rgba(71,85,105,0.1)", border: "#e2e8f0" };
   const text = label ?? STATUS_LABELS[key] ?? (status ? status.replace(/_/g, " ").toUpperCase() : "UNKNOWN");
