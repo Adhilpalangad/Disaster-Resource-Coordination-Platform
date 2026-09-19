@@ -65,6 +65,7 @@ const NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { label: "Manage Volunteers", path: "/admin/volunteers", icon: <UserCheck size={18} /> },
     { label: "Manage Disasters", path: "/admin/disasters", icon: <AlertTriangle size={18} /> },
     { label: "Manage Resources", path: "/admin/resources", icon: <Package size={18} /> },
+    { label: "Manage Duplicates", path: "/admin/duplicates", icon: <AlertTriangle size={18} /> },
     { label: "Analytics", path: "/admin/analytics", icon: <BarChart3 size={18} /> },
     { label: "System Settings", path: "/admin/settings", icon: <Sliders size={18} /> },
     { label: "Help Center", path: "/help", icon: <HelpCircle size={18} /> },

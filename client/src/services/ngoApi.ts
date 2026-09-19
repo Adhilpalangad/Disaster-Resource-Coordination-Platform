@@ -1,25 +1,8 @@
 import api from "./api.js";
+import { extractData, createResourceApi } from "./baseService.js";
+import type { NGOProfileData } from "@disaster-platform/shared";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-export interface NGOProfileData {
-  _id:     string;
-  userId:  string;
-  orgName: string;
-  email:   string;
-  phone?:  string;
-  isActive: boolean;
-  serviceAreas: {
-    districtIds:  string[];
-    talukIds:     string[];
-    localBodyIds: string[];
-  };
-  resourceCapacity:         number;
-  currentWorkload:          number;
-  acceptanceTimeoutMinutes: number;
-  createdAt: string;
-  updatedAt: string;
-}
+export type { NGOProfileData };
 
 export interface CreateNGOPayload {
   userId:       string;
@@ -35,30 +18,17 @@ export interface CreateNGOPayload {
   acceptanceTimeoutMinutes?: number;
 }
 
-// ── Helper ────────────────────────────────────────────────────────────────────
-
-function extract<T>(res: { data: { data: T } }): T {
-  return res.data.data;
-}
-
-// ── API ───────────────────────────────────────────────────────────────────────
+const baseNgo = createResourceApi<NGOProfileData, CreateNGOPayload, Partial<Omit<CreateNGOPayload, "userId">>>("/ngos");
 
 export const ngoApi = {
+  ...baseNgo,
+
   getAll: (params?: { isActive?: boolean }) =>
-    api.get<{ data: NGOProfileData[] }>("/ngos", { params }).then(extract),
+    api.get<{ data: NGOProfileData[] }>("/ngos", { params }).then(extractData),
 
   getMyProfile: (userId: string) =>
-    api.get<{ data: NGOProfileData }>(`/ngos/profile/${userId}`).then(extract),
-
-  getById: (id: string) =>
-    api.get<{ data: NGOProfileData }>(`/ngos/${id}`).then(extract),
-
-  create: (payload: CreateNGOPayload) =>
-    api.post<{ data: NGOProfileData }>("/ngos", payload).then(extract),
-
-  update: (id: string, payload: Partial<Omit<CreateNGOPayload, "userId">>) =>
-    api.put<{ data: NGOProfileData }>(`/ngos/${id}`, payload).then(extract),
+    api.get<{ data: NGOProfileData }>(`/ngos/profile/${userId}`).then(extractData),
 
   toggle: (id: string) =>
-    api.post<{ data: NGOProfileData }>(`/ngos/${id}/toggle`).then(extract),
+    api.post<{ data: NGOProfileData }>(`/ngos/${id}/toggle`).then(extractData),
 };

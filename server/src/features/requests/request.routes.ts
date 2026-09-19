@@ -8,6 +8,11 @@ import {
   verifyRequest, rejectRequest, ngoAcceptRequest, reserveResources, assignVolunteer,
   markInTransit, markDelivered, confirmDelivery,
 } from "./request.controller.js";
+import {
+  getDuplicateLogs,
+  overrideDuplicateAttempt,
+  getDuplicateLogsForRequest,
+} from "./duplicate.controller.js";
 import { requireAuth } from "../../middleware/auth.middleware.js";
 import { validateBody } from "../../utils/validate.js";
 import {
@@ -69,6 +74,11 @@ const handleCloudinaryUpload = async (req: any, _res: any, next: any) => {
 };
 
 const router = Router();
+
+// Duplicate Management Routes (Must precede /:id)
+router.get("/duplicates/logs", requireAuth, getDuplicateLogs);
+router.post("/duplicates/logs/:logId/override", requireAuth, overrideDuplicateAttempt);
+router.get("/:requestId/duplicates", requireAuth, getDuplicateLogsForRequest);
 
 // CRUD
 // Note: createRequest is multipart/form-data (image upload) with several JSON-stringified

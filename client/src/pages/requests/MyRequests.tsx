@@ -34,6 +34,7 @@ function timeAgo(iso: string): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
+import { STATUS_GROUPS, DELETEABLE_STATUSES } from "@disaster-platform/shared";
 const DELETEABLE_STATUSES: RequestStatus[] = ["pending", "location_routed"];
 
 const STATUS_GROUPS: Record<string, RequestStatus[]> = {

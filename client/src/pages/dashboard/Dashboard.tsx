@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   AlertTriangle, FileText, Home, Users,
@@ -6,7 +6,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.js";
 import { requestsApi } from "../../services/requestsApi.js";
-import type { ReliefRequest } from "../../types/index.js";
+import { STATUS_GROUPS } from "@disaster-platform/shared";
+import type { RequestStatus, ReliefRequest } from "@disaster-platform/shared";
 import PageContainer from "../../components/PageContainer.js";
 import PageHeader from "../../components/PageHeader.js";
 import Card from "../../components/Card.js";
@@ -41,7 +42,6 @@ export const Dashboard: React.FC = () => {
     }
   }, [user]);
 
-  useEffect(() => { fetchRequests(); }, [fetchRequests]);
 
   const pending  = requests.filter(r => r.status === "pending" || r.status === "location_routed").length;
   const active   = requests.filter(r => ["ngo_assigned", "ngo_accepted", "verified", "resources_reserved", "volunteer_assigned", "in_transit"].includes(r.status)).length;
