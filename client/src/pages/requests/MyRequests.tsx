@@ -35,13 +35,6 @@ function timeAgo(iso: string): string {
 }
 
 import { STATUS_GROUPS, DELETEABLE_STATUSES } from "@disaster-platform/shared";
-const DELETEABLE_STATUSES: RequestStatus[] = ["pending", "location_routed"];
-
-const STATUS_GROUPS: Record<string, RequestStatus[]> = {
-  pending:  ["pending", "location_routed", "ngo_assigned"],
-  active:   ["ngo_accepted", "verified", "resources_reserved", "volunteer_assigned", "in_transit", "delivered"],
-  completed:["completed", "closed"],
-};
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
