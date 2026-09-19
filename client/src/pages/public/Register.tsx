@@ -1,27 +1,28 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AlertCircle, ShieldCheck, Home, Building2, HandHelping, Eye, EyeOff } from "lucide-react";
+import { AlertCircle, Home, Building2, HandHelping, Eye, EyeOff, ArrowRight } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.js";
 import type { UserRole } from "../../types/index.js";
 import { Helmet } from "react-helmet-async";
+import { DotPattern } from "@/registry/magicui/dot-pattern";
 
-// ── Role tiles ────────────────────────────────────────────────────────────────
 const ROLES: { value: UserRole; label: string; Icon: React.ElementType; hint: string }[] = [
   { value: "citizen",   label: "Citizen",   Icon: Home,        hint: "Request relief" },
   { value: "ngo",       label: "NGO",       Icon: Building2,   hint: "Coordinate aid" },
   { value: "volunteer", label: "Volunteer", Icon: HandHelping,  hint: "Deliver aid" },
 ];
 
-const inp: React.CSSProperties = {
+const inpStyle: React.CSSProperties = {
   width: "100%",
-  padding: "11px 14px",
-  borderRadius: "10px",
+  padding: "13px 18px",
+  borderRadius: "14px",
   border: "1px solid var(--border)",
-  fontSize: "15px",
+  fontSize: "14.5px",
   outline: "none",
   boxSizing: "border-box",
   color: "var(--text-h)",
-  backgroundColor: "var(--card-bg)",
+  backgroundColor: "var(--input-bg)",
+  transition: "all 0.2s ease",
 };
 
 const DISTRICTS = [
@@ -95,7 +96,6 @@ export const Register: React.FC = () => {
         district:          district || undefined,
         profession:        role === "volunteer" ? (profession === "Other" ? otherProfession.trim() : profession) : undefined,
       });
-      // register() signs the user in and returns the role-specific path
       navigate(dashPath, { replace: true });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -110,32 +110,55 @@ export const Register: React.FC = () => {
   };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px", backgroundColor: "var(--bg)" }}>
+    <div style={{ position: "relative", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px", backgroundColor: "var(--bg)", overflow: "hidden" }}>
+      <DotPattern style={{ opacity: 0.3 }} />
       <Helmet>
-        <title>Create Account | Disaster Resource Coordination Platform</title>
-        <meta name="description" content="Join the disaster relief network as a citizen, NGO, or volunteer to coordinate and receive emergency assistance." />
+        <title>Create Account | Disaster Platform</title>
+        <meta name="description" content="Join the disaster relief network as a citizen, NGO, or volunteer." />
       </Helmet>
-      <div style={{ width: "100%", maxWidth: "420px" }}>
 
-        {/* Logo */}
-        <div style={{ textAlign: "center", marginBottom: "24px" }}>
-          <div style={{ width: "52px", height: "52px", borderRadius: "14px", backgroundColor: "var(--primary)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: "12px" }}>
-            <ShieldCheck size={26} color="#fff" />
-          </div>
-          <h1 style={{ margin: "0 0 4px", fontSize: "22px", fontWeight: 800, color: "var(--text-h)" }}>Create account</h1>
-          <p style={{ margin: 0, fontSize: "14px", color: "var(--secondary)" }}>Join the disaster relief network</p>
+      <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: "520px" }}>
+
+        {/* Brand */}
+        <div style={{ textAlign: "center", marginBottom: "28px" }}>
+          <Link
+            to="/home"
+            style={{
+              fontSize: "26px",
+              fontWeight: 800,
+              color: "var(--text-h)",
+              fontFamily: "var(--heading)",
+              letterSpacing: "-0.5px",
+              textDecoration: "none",
+              display: "inline-block",
+              marginBottom: "8px",
+            }}
+          >
+            Disaster Platform
+          </Link>
+          <p style={{ margin: 0, fontSize: "15px", color: "var(--secondary)" }}>
+            Create your account to join the operations network
+          </p>
         </div>
 
-        {/* Card */}
-        <div style={{ backgroundColor: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "16px", padding: "28px", boxShadow: "var(--shadow)" }}>
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+        {/* Main Card */}
+        <div
+          style={{
+            backgroundColor: "var(--card-bg)",
+            border: "1px solid var(--border)",
+            borderRadius: "24px",
+            padding: "32px",
+            boxShadow: "var(--shadow-md)",
+          }}
+        >
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
-            {/* ── Role tiles ── */}
+            {/* Role Tiles */}
             <div>
-              <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "10px", color: "var(--text-h)" }}>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: 700, marginBottom: "12px", color: "var(--text-h)", fontFamily: "var(--heading)" }}>
                 I am joining as
               </label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
                 {ROLES.map(({ value, label, Icon, hint }) => {
                   const active = role === value;
                   return (
@@ -144,17 +167,20 @@ export const Register: React.FC = () => {
                       type="button"
                       onClick={() => { setRole(value); setError(""); }}
                       style={{
-                        display: "flex", flexDirection: "column", alignItems: "center", gap: "6px",
-                        padding: "12px 8px",
-                        borderRadius: "10px",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "14px 10px",
+                        borderRadius: "14px",
                         border: `2px solid ${active ? "var(--primary)" : "var(--border)"}`,
-                        backgroundColor: active ? "rgba(2,132,199,0.06)" : "var(--bg)",
+                        backgroundColor: active ? "var(--accent-bg)" : "var(--bg)",
                         cursor: "pointer",
-                        transition: "all 0.14s",
+                        transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
                       }}
                     >
                       <Icon size={20} color={active ? "var(--primary)" : "var(--secondary)"} />
-                      <span style={{ fontSize: "13px", fontWeight: 700, color: active ? "var(--primary)" : "var(--text-h)" }}>{label}</span>
+                      <span style={{ fontSize: "13px", fontWeight: 700, fontFamily: "var(--heading)", color: active ? "var(--primary)" : "var(--text-h)" }}>{label}</span>
                       <span style={{ fontSize: "10px", color: "var(--secondary)", lineHeight: 1.2 }}>{hint}</span>
                     </button>
                   );
@@ -162,9 +188,9 @@ export const Register: React.FC = () => {
               </div>
             </div>
 
-            {/* ── Fields ── */}
+            {/* Name */}
             <div>
-              <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: 700, marginBottom: "8px", color: "var(--text-h)", fontFamily: "var(--heading)" }}>
                 Full Name <span style={{ color: "var(--danger)" }}>*</span>
               </label>
               <input
@@ -173,13 +199,14 @@ export const Register: React.FC = () => {
                 onChange={e => { setName(e.target.value); setError(""); }}
                 placeholder="Your full name"
                 autoComplete="name"
-                style={inp}
+                style={inpStyle}
               />
             </div>
 
+            {/* Email */}
             <div>
-              <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
-                Email <span style={{ color: "var(--danger)" }}>*</span>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: 700, marginBottom: "8px", color: "var(--text-h)", fontFamily: "var(--heading)" }}>
+                Email Address <span style={{ color: "var(--danger)" }}>*</span>
               </label>
               <input
                 type="email"
@@ -187,36 +214,36 @@ export const Register: React.FC = () => {
                 onChange={e => { setEmail(e.target.value); setError(""); }}
                 placeholder="you@example.com"
                 autoComplete="email"
-                style={inp}
+                style={inpStyle}
               />
             </div>
 
-            {/* NGO only: org name */}
+            {/* NGO Org Name */}
             {role === "ngo" && (
               <div>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 700, marginBottom: "8px", color: "var(--text-h)", fontFamily: "var(--heading)" }}>
                   Organization Name <span style={{ color: "var(--danger)" }}>*</span>
                 </label>
                 <input
                   type="text"
                   value={orgName}
                   onChange={e => { setOrgName(e.target.value); setError(""); }}
-                  placeholder="e.g. Kerala Relief Foundation"
-                  style={inp}
+                  placeholder="e.g. Relief Foundation"
+                  style={inpStyle}
                 />
               </div>
             )}
 
-            {/* NGO & Volunteer: District */}
+            {/* District */}
             {(role === "ngo" || role === "volunteer") && (
               <div>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 700, marginBottom: "8px", color: "var(--text-h)", fontFamily: "var(--heading)" }}>
                   District <span style={{ color: "var(--danger)" }}>*</span>
                 </label>
                 <select
                   value={district}
                   onChange={e => { setDistrict(e.target.value); setError(""); }}
-                  style={inp}
+                  style={inpStyle}
                 >
                   <option value="" disabled>Select District</option>
                   {DISTRICTS.map(d => (
@@ -226,17 +253,17 @@ export const Register: React.FC = () => {
               </div>
             )}
 
-            {/* Volunteer only: Profession */}
+            {/* Volunteer Profession */}
             {role === "volunteer" && (
               <>
                 <div>
-                  <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: 700, marginBottom: "8px", color: "var(--text-h)", fontFamily: "var(--heading)" }}>
                     Profession / Skills <span style={{ color: "var(--danger)" }}>*</span>
                   </label>
                   <select
                     value={profession}
                     onChange={e => { setProfession(e.target.value); setError(""); }}
-                    style={inp}
+                    style={inpStyle}
                   >
                     <option value="" disabled>Select Profession</option>
                     {PROFESSIONS.map(p => (
@@ -246,23 +273,24 @@ export const Register: React.FC = () => {
                 </div>
                 {profession === "Other" && (
                   <div>
-                    <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
+                    <label style={{ display: "block", fontSize: "13px", fontWeight: 700, marginBottom: "8px", color: "var(--text-h)", fontFamily: "var(--heading)" }}>
                       Specify Profession <span style={{ color: "var(--danger)" }}>*</span>
                     </label>
                     <input
                       type="text"
                       value={otherProfession}
                       onChange={e => { setOtherProfession(e.target.value); setError(""); }}
-                      placeholder="e.g. Carpenter"
-                      style={inp}
+                      placeholder="e.g. Electrician"
+                      style={inpStyle}
                     />
                   </div>
                 )}
               </>
             )}
 
+            {/* Phone */}
             <div>
-              <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: 700, marginBottom: "8px", color: "var(--text-h)", fontFamily: "var(--heading)" }}>
                 Phone <span style={{ fontSize: "11px", color: "var(--secondary)", fontWeight: 400 }}>(optional)</span>
               </label>
               <input
@@ -271,12 +299,13 @@ export const Register: React.FC = () => {
                 onChange={e => setPhone(e.target.value)}
                 placeholder="+91 98765 43210"
                 autoComplete="tel"
-                style={inp}
+                style={inpStyle}
               />
             </div>
 
+            {/* Password */}
             <div>
-              <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px", color: "var(--text-h)" }}>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: 700, marginBottom: "8px", color: "var(--text-h)", fontFamily: "var(--heading)" }}>
                 Password <span style={{ color: "var(--danger)" }}>*</span>
               </label>
               <div style={{ position: "relative" }}>
@@ -286,12 +315,12 @@ export const Register: React.FC = () => {
                   onChange={e => { setPass(e.target.value); setError(""); }}
                   placeholder="Min. 6 characters"
                   autoComplete="new-password"
-                  style={{ ...inp, paddingRight: "40px" }}
+                  style={{ ...inpStyle, paddingRight: "44px" }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--secondary)", padding: 0 }}
+                  style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--secondary)", padding: 0 }}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -300,8 +329,8 @@ export const Register: React.FC = () => {
             </div>
 
             {error && (
-              <div style={{ display: "flex", alignItems: "flex-start", gap: "8px", padding: "10px 12px", borderRadius: "8px", backgroundColor: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)", color: "var(--danger)", fontSize: "13px" }}>
-                <AlertCircle size={14} style={{ flexShrink: 0, marginTop: "1px" }} />
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "8px", padding: "12px 14px", borderRadius: "10px", backgroundColor: "var(--danger-bg)", border: "1px solid var(--danger-border)", color: "var(--danger)", fontSize: "13px" }}>
+                <AlertCircle size={16} style={{ flexShrink: 0, marginTop: "1px" }} />
                 {error}
               </div>
             )}
@@ -309,29 +338,36 @@ export const Register: React.FC = () => {
             <button
               type="submit"
               disabled={busy}
-              style={{ padding: "12px", borderRadius: "10px", border: "none", backgroundColor: busy ? "var(--secondary)" : "var(--primary)", color: "#fff", fontWeight: 700, fontSize: "15px", cursor: busy ? "not-allowed" : "pointer", transition: "background 0.15s" }}
+              style={{
+                width: "100%",
+                padding: "14px",
+                borderRadius: "14px",
+                border: "none",
+                backgroundColor: busy ? "var(--secondary)" : "var(--primary)",
+                color: "#ffffff",
+                fontWeight: 700,
+                fontFamily: "var(--heading)",
+                fontSize: "14px",
+                cursor: busy ? "not-allowed" : "pointer",
+                transition: "all 0.2s ease",
+                boxShadow: "var(--shadow-sm)",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+              }}
             >
-              {busy ? "Creating account…" : "Create Account"}
+              {busy ? "Creating account…" : "Create Account"} <ArrowRight size={16} />
             </button>
           </form>
         </div>
 
         {/* Sign-in link */}
-        <p style={{ textAlign: "center", marginTop: "20px", fontSize: "14px", color: "var(--secondary)" }}>
+        <p style={{ textAlign: "center", marginTop: "24px", fontSize: "14px", color: "var(--secondary)" }}>
           Already have an account?{" "}
           <Link to="/login" style={{ color: "var(--primary)", fontWeight: 700, textDecoration: "none" }}>
-            Sign in →
+            Sign in
           </Link>
-        </p>
-
-        <p style={{ textAlign: "center", marginTop: "8px", fontSize: "11px", color: "var(--secondary)", opacity: 0.7 }}>
-          Administrator accounts are created by the system admin.
-        </p>
-        <p style={{ textAlign: "center", marginTop: "8px", fontSize: "11px", color: "var(--secondary)", opacity: 0.7 }}>
-          By creating an account, you agree to our{" "}
-          <Link to="/terms" style={{ color: "var(--primary)", textDecoration: "none" }}>Terms of Service</Link>
-          {" "}and{" "}
-          <Link to="/privacy" style={{ color: "var(--primary)", textDecoration: "none" }}>Privacy Policy</Link>.
         </p>
       </div>
     </div>

@@ -29,7 +29,7 @@ console.log('1. Start the Docker containers:');
 console.log('   docker compose up --build');
 console.log('   (This will launch client, server, and mongodb)');
 console.log('\n2. Access the services:');
-console.log('   - Frontend: http://localhost:5173');
+console.log('   - Frontend: http://localhost:8080');
 console.log('   - Backend API: http://localhost:5000');
 console.log('   - MongoDB: localhost:27017');
 console.log('------------------------------------------------------\n');

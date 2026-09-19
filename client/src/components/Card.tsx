@@ -7,6 +7,7 @@ interface CardProps {
   action?: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
+  hoverEffect?: boolean;
 }
 
 export const Card: React.FC<CardProps> = ({
@@ -16,16 +17,20 @@ export const Card: React.FC<CardProps> = ({
   action,
   className = "",
   style = {},
+  hoverEffect = true,
 }) => {
   return (
     <div
-      className={className}
+      className={`lightswind-card ${hoverEffect ? "card-hover" : ""} ${className}`}
       style={{
-        backgroundColor: "var(--card-bg, #FFFFFF)",
-        borderRadius: "16px",
-        border: "1px solid var(--border, #E2E8F0)",
+        backgroundColor: "var(--card-bg)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        borderRadius: "20px",
+        border: "1px solid var(--border)",
         padding: "24px",
-        boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.05)",
+        boxShadow: "var(--shadow-sm)",
+        transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
         ...style,
       }}
     >
@@ -35,9 +40,9 @@ export const Card: React.FC<CardProps> = ({
             display: "flex",
             justifyContent: "space-between",
             alignItems: "flex-start",
-            marginBottom: "16px",
-            borderBottom: subtitle ? "none" : "1px solid var(--border, #E2E8F0)",
-            paddingBottom: subtitle ? "0" : "12px",
+            marginBottom: "20px",
+            borderBottom: subtitle ? "none" : "1px solid var(--border-light)",
+            paddingBottom: subtitle ? "0" : "14px",
           }}
         >
           <div>
@@ -45,9 +50,11 @@ export const Card: React.FC<CardProps> = ({
               <h3
                 style={{
                   margin: 0,
-                  fontSize: "18px",
-                  fontWeight: 700,
-                  color: "var(--text-h, #0F172A)",
+                  fontSize: "19px",
+                  fontWeight: 800,
+                  color: "var(--text-h)",
+                  fontFamily: "var(--heading)",
+                  letterSpacing: "-0.3px",
                 }}
               >
                 {title}
@@ -56,9 +63,10 @@ export const Card: React.FC<CardProps> = ({
             {subtitle && (
               <p
                 style={{
-                  margin: "4px 0 0",
+                  margin: "6px 0 0",
                   fontSize: "14px",
-                  color: "var(--text, #475569)",
+                  color: "var(--secondary)",
+                  lineHeight: 1.5,
                 }}
               >
                 {subtitle}

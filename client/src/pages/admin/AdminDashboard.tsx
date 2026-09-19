@@ -87,7 +87,7 @@ export const AdminDashboard: React.FC = () => {
     <PageContainer>
       <PageHeader
         title="Admin Control Centre"
-        description="Platform-wide oversight — users, NGOs, disasters, and system health."
+        description="Platform-wide oversight: users, NGOs, disasters, and system health."
         actions={
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <button

@@ -272,10 +272,10 @@ export const VolunteerDashboard: React.FC = () => {
       {/* KPI strip */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "12px", marginBottom: "24px" }}>
         {[
-          { label: "Assigned",        value: loading ? "—" : String(assigned),       color: "#7c3aed",        bg: "rgba(124,58,237,0.1)" },
-          { label: "In Transit",      value: loading ? "—" : String(inTransit),      color: "var(--warning)", bg: "rgba(245,158,11,0.1)"  },
-          { label: "Delivered Today", value: loading ? "—" : String(deliveredToday), color: "var(--primary)", bg: "rgba(2,132,199,0.1)"   },
-          { label: "Completed",       value: loading ? "—" : String(completed),      color: "var(--success)", bg: "rgba(5,150,105,0.1)"   },
+          { label: "Assigned",        value: loading ? "N/A" : String(assigned),       color: "#7c3aed",        bg: "rgba(124,58,237,0.1)" },
+          { label: "In Transit",      value: loading ? "N/A" : String(inTransit),      color: "var(--warning)", bg: "rgba(245,158,11,0.1)"  },
+          { label: "Delivered Today", value: loading ? "N/A" : String(deliveredToday), color: "var(--primary)", bg: "rgba(2,132,199,0.1)"   },
+          { label: "Completed",       value: loading ? "N/A" : String(completed),      color: "var(--success)", bg: "rgba(5,150,105,0.1)"   },
         ].map(k => (
           <div key={k.label} style={{ backgroundColor: "var(--card-bg)", borderRadius: "12px", border: "1px solid var(--border)", padding: "16px 18px", display: "flex", flexDirection: "column", gap: "4px" }}>
             <div style={{ fontSize: "24px", fontWeight: 800, color: k.color }}>{k.value}</div>

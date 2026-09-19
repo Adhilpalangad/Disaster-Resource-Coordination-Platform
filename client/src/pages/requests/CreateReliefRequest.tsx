@@ -36,7 +36,7 @@ const URGENCY_CONFIG: { value: UrgencyLevel; label: string; color: string; bg: s
   { value: "low",      label: "Low",      color: "var(--success)", bg: "rgba(5,150,105,0.08)",  desc: "Can wait 24–48 hours" },
   { value: "medium",   label: "Medium",   color: "var(--warning)", bg: "rgba(245,158,11,0.08)", desc: "Required today" },
   { value: "high",     label: "High",     color: "var(--danger)",  bg: "rgba(239,68,68,0.08)",  desc: "Within a few hours" },
-  { value: "critical", label: "Critical", color: "#7c3aed",        bg: "rgba(124,58,237,0.08)", desc: "Life-threatening — immediate" },
+  { value: "critical", label: "Critical", color: "#7c3aed",        bg: "rgba(124,58,237,0.08)", desc: "Life-threatening - immediate" },
 ];
 
 const AGE_GROUPS: { value: AgeGroup; label: string }[] = [
@@ -432,8 +432,8 @@ export const CreateReliefRequest: React.FC = () => {
               <Row label="Full Name"           value={formData.fullName} />
               <Row label="Mobile"              value={formData.mobileNumber} />
               <Row label="People Affected"     value={String(formData.peopleAffected)} />
-              <Row label="Age Groups"          value={formData.ageGroups.join(", ") || "—"} />
-              <Row label="Special Needs"       value={formData.specialNeeds.join(", ") || "—"} />
+              <Row label="Age Groups"          value={formData.ageGroups.join(", ") || "N/A"} />
+              <Row label="Special Needs"       value={formData.specialNeeds.join(", ") || "N/A"} />
             </Section>
 
             {/* Request */}
@@ -511,7 +511,7 @@ const Row: React.FC<{ label: string; value: string; multiline?: boolean }> = ({ 
   <div style={{ display: multiline ? "block" : "flex", gap: "12px" }}>
     <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--secondary)", whiteSpace: "nowrap", minWidth: "130px", flexShrink: 0 }}>{label}</span>
     <span style={{ fontSize: "13px", color: "var(--text-h)", wordBreak: "break-word", lineHeight: multiline ? 1.6 : 1.4, marginTop: multiline ? "4px" : undefined, display: multiline ? "block" : undefined }}>
-      {value || <span style={{ color: "var(--secondary)" }}>—</span>}
+      {value || <span style={{ color: "var(--secondary)" }}>N/A</span>}
     </span>
   </div>
 );

@@ -129,7 +129,7 @@ export const DisasterDetails: React.FC = () => {
           <h3 style={{ margin: "4px 0 0", fontSize: "18px", fontWeight: 700, color: "var(--primary)" }}>
             {disaster.affectedDistrictNames.length > 0
               ? disaster.affectedDistrictNames.length
-              : "—"}
+              : "0"}
           </h3>
         </Card>
       </div>

@@ -285,7 +285,7 @@ export const Assignments: React.FC = () => {
     <PageContainer>
       <PageHeader
         title="Volunteer Assignments"
-        description="Track all volunteer delivery tasks dispatched by your NGO — live status, reassignment, and delivery confirmation."
+        description="Track all volunteer delivery tasks dispatched by your NGO: live status, reassignment, and delivery confirmation."
         breadcrumbs={[{ label: "NGO Dashboard", path: "/ngo/dashboard" }, { label: "Assignments" }]}
         actions={
           <button onClick={fetchAssignments} disabled={loading}
@@ -303,12 +303,12 @@ export const Assignments: React.FC = () => {
       )}
 
       {/* KPI strip */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "12px", marginBottom: "20px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "12px", marginBottom: "24px" }}>
         {[
-          { label: "Total Assigned",  value: loading ? "—" : String(totalAssigned),  color: "var(--primary)", bg: "rgba(2,132,199,0.1)"   },
-          { label: "Active",          value: loading ? "—" : String(activeCount),    color: "#7c3aed",        bg: "rgba(124,58,237,0.1)"  },
-          { label: "In Transit",      value: loading ? "—" : String(inTransitCount), color: "var(--warning)", bg: "rgba(245,158,11,0.1)"  },
-          { label: "Delivered",       value: loading ? "—" : String(deliveredCount), color: "var(--success)", bg: "rgba(5,150,105,0.1)"   },
+          { label: "Total Assigned",  value: loading ? "-" : String(totalAssigned),  color: "var(--primary)", bg: "rgba(2,132,199,0.1)"   },
+          { label: "Active",          value: loading ? "-" : String(activeCount),    color: "#7c3aed",        bg: "rgba(124,58,237,0.1)"  },
+          { label: "In Transit",      value: loading ? "-" : String(inTransitCount), color: "var(--warning)", bg: "rgba(245,158,11,0.1)"  },
+          { label: "Delivered",       value: loading ? "-" : String(deliveredCount), color: "var(--success)", bg: "rgba(5,150,105,0.1)"   },
         ].map(k => (
           <div key={k.label} style={{ backgroundColor: "var(--card-bg)", borderRadius: "12px", border: "1px solid var(--border)", padding: "14px 16px" }}>
             <div style={{ fontSize: "22px", fontWeight: 800, color: k.color }}>{k.value}</div>

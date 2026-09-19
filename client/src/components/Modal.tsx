@@ -26,24 +26,29 @@ export const Modal: React.FC<ModalProps> = ({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "rgba(15, 23, 42, 0.5)",
+        backgroundColor: "rgba(11, 15, 23, 0.65)",
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         zIndex: 1000,
         padding: "16px",
       }}
+      onClick={onClose}
     >
       <div
+        className="animate-fade-in"
         style={{
-          backgroundColor: "#FFFFFF",
-          borderRadius: "18px",
+          backgroundColor: "var(--card-bg)",
+          borderRadius: "24px",
           width: "100%",
-          maxWidth: "500px",
-          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+          maxWidth: "520px",
+          boxShadow: "var(--shadow-lg)",
           overflow: "hidden",
-          border: "1px solid var(--border, #E2E8F0)",
+          border: "1px solid var(--border)",
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
         <div
@@ -51,11 +56,17 @@ export const Modal: React.FC<ModalProps> = ({
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            padding: "18px 24px",
-            borderBottom: "1px solid var(--border, #E2E8F0)",
+            padding: "20px 24px",
+            borderBottom: "1px solid var(--border)",
           }}
         >
-          <h3 style={{ margin: 0, fontSize: "18px", fontWeight: 700, color: "var(--text-h, #0F172A)" }}>
+          <h3 style={{
+            margin: 0,
+            fontSize: "19px",
+            fontWeight: 800,
+            color: "var(--text-h)",
+            fontFamily: "var(--heading)",
+          }}>
             {title}
           </h3>
           <button
@@ -64,26 +75,30 @@ export const Modal: React.FC<ModalProps> = ({
               background: "transparent",
               border: "none",
               cursor: "pointer",
-              color: "#64748B",
-              padding: "4px",
+              color: "var(--secondary)",
+              padding: "6px",
+              borderRadius: "50%",
               display: "flex",
               alignItems: "center",
+              justifyContent: "center",
+              transition: "all 0.15s ease",
             }}
+            aria-label="Close modal"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div style={{ padding: "24px" }}>{children}</div>
+        <div style={{ padding: "24px", color: "var(--text)" }}>{children}</div>
 
         {/* Modal Footer */}
         {footer && (
           <div
             style={{
               padding: "16px 24px",
-              backgroundColor: "var(--bg, #F8FAFC)",
-              borderTop: "1px solid var(--border, #E2E8F0)",
+              backgroundColor: "var(--bg)",
+              borderTop: "1px solid var(--border)",
               display: "flex",
               justifyContent: "flex-end",
               gap: "12px",

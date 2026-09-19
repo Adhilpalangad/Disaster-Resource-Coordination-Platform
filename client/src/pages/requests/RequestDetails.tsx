@@ -27,7 +27,7 @@ function timeAgo(iso: string): string {
 }
 
 function fmt(iso?: string): string {
-  if (!iso) return "—";
+  if (!iso) return "N/A";
   return new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
@@ -94,7 +94,7 @@ function buildTimeline(req: ReliefRequest): TimelineStep[] {
     },
     {
       icon: <CheckCircle size={15} />,
-      label: s === "completed" ? "Completed & Confirmed" : "Delivered — Awaiting Confirmation",
+      label: s === "completed" ? "Completed & Confirmed" : "Delivered - Awaiting Confirmation",
       detail: req.completedAt ? fmt(req.completedAt) : req.deliveredAt ? fmt(req.deliveredAt) : undefined,
       color: "var(--success)",
       done: idx >= 8,
