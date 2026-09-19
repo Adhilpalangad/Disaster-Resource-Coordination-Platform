@@ -1,5 +1,5 @@
 import React from "react";
-import { Menu } from "lucide-react";
+import { Menu, Activity } from "lucide-react";
 import NotificationDropdown from "../components/NotificationDropdown.js";
 import ProfileDropdown from "../components/ProfileDropdown.js";
 import ThemeToggle from "../components/ThemeToggle.js";
@@ -17,13 +17,14 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
     <header
       style={{
         height: "64px",
-        backgroundColor: "var(--card-bg, #FFFFFF)",
-        borderBottom: "1px solid var(--border, #E2E8F0)",
+        backgroundColor: "var(--card-bg)",
+        borderBottom: "1px solid var(--border)",
         padding: "0 24px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         boxSizing: "border-box",
+        transition: "background-color 0.25s ease, border-color 0.25s ease",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
@@ -35,9 +36,10 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
               border: "none",
               cursor: "pointer",
               padding: "6px",
+              borderRadius: "8px",
               display: "flex",
               alignItems: "center",
-              color: "var(--secondary, #475569)",
+              color: "var(--secondary)",
             }}
             aria-label="Toggle navigation menu"
           >
@@ -45,16 +47,32 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           </button>
         )}
         {title && (
-          <span style={{ fontSize: "16px", fontWeight: 700, color: "var(--text-h, #0F172A)" }}>
+          <span style={{ fontSize: "16px", fontWeight: 700, color: "var(--text-h)" }}>
             {title}
           </span>
         )}
+
+        <div style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "6px",
+          padding: "4px 10px",
+          borderRadius: "99px",
+          backgroundColor: "var(--accent-bg)",
+          border: "1px solid var(--accent-border)",
+          fontSize: "12px",
+          fontWeight: 600,
+          color: "var(--primary)",
+        }}>
+          <Activity size={13} />
+          <span>System Online</span>
+        </div>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
         <ThemeToggle />
         <NotificationDropdown />
-        <div style={{ width: "1px", height: "24px", backgroundColor: "var(--border, #E2E8F0)" }} />
+        <div style={{ width: "1px", height: "24px", backgroundColor: "var(--border)" }} />
         <ProfileDropdown />
       </div>
     </header>

@@ -323,16 +323,16 @@ const InventoryList: React.FC<{
                   <td style={{ padding: "12px 14px", fontWeight: 700, color: "var(--text-h)" }}>
                     {item.quantity.toLocaleString()} <span style={{ fontSize: "11px", fontWeight: 400, color: "var(--secondary)" }}>{item.unit}</span>
                   </td>
-                  <td style={{ padding: "12px 14px", color: "var(--secondary)", fontSize: "12px" }}>{item.location || "—"}</td>
+                  <td style={{ padding: "12px 14px", color: "var(--secondary)", fontSize: "12px" }}>{item.location || "N/A"}</td>
                   <td style={{ padding: "12px 14px" }}>
                     {item.expiresAt ? (
                       <span style={{ fontSize: "12px", fontWeight: 600, color: expColors[exp] }}>
                         {exp === "expired" ? "⚠ Expired" : exp === "soon" ? "⚠ " : ""}
                         {new Date(item.expiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                       </span>
-                    ) : <span style={{ color: "var(--secondary)", fontSize: "12px" }}>—</span>}
+                    ) : <span style={{ color: "var(--secondary)", fontSize: "12px" }}>N/A</span>}
                   </td>
-                  <td style={{ padding: "12px 14px", color: "var(--secondary)", fontSize: "12px" }}>{item.notes || "—"}</td>
+                  <td style={{ padding: "12px 14px", color: "var(--secondary)", fontSize: "12px" }}>{item.notes || "N/A"}</td>
                   <td style={{ padding: "12px 14px" }}>
                     <div style={{ display: "flex", gap: "4px" }}>
                       <button onClick={() => onEdit(item)} title="Edit"

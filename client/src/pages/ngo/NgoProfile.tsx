@@ -173,7 +173,7 @@ export const NgoProfile: React.FC = () => {
           </span>
         </div>
         <p style={{ margin: "8px 0 0", fontSize: "12px", color: "var(--secondary)" }}>
-          {workloadPct}% capacity used — {profile.resourceCapacity - profile.currentWorkload} slots available
+          {workloadPct}% capacity used - {profile.resourceCapacity - profile.currentWorkload} slots available
         </p>
       </Card>
 

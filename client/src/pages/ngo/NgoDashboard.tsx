@@ -86,7 +86,7 @@ export const NgoDashboard: React.FC = () => {
         <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 16px", borderRadius: "10px", backgroundColor: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)", marginBottom: "24px" }}>
           <AlertTriangle size={15} style={{ color: "var(--danger)", flexShrink: 0 }} />
           <p style={{ margin: 0, fontSize: "13px", fontWeight: 500, color: "var(--text-h)" }}>
-            <strong>{awaitingCount} request{awaitingCount !== 1 ? "s" : ""}</strong> assigned to your organisation — awaiting acceptance.
+            <strong>{awaitingCount} request{awaitingCount !== 1 ? "s" : ""}</strong> assigned to your organisation: awaiting acceptance.
           </p>
           <Link to="/ngo/requests" style={{ marginLeft: "auto", fontSize: "12px", fontWeight: 600, color: "var(--danger)", textDecoration: "none", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "4px" }}>
             Open Queue <ArrowRight size={12} />
@@ -96,7 +96,7 @@ export const NgoDashboard: React.FC = () => {
 
       <PageHeader
         title={user?.organizationName ?? "NGO Dashboard"}
-        description="Your assigned requests and deliveries — only your organisation's data."
+        description="Your assigned requests and deliveries - only your organisation's data."
         actions={
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
             <button onClick={fetchData} disabled={loading} title="Refresh"
@@ -116,10 +116,10 @@ export const NgoDashboard: React.FC = () => {
       {/* KPI strip */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "14px", marginBottom: "24px" }}>
         {[
-          { label: "Awaiting Acceptance", value: loading ? "—" : String(awaitingCount),  color: "var(--danger)",  bg: "rgba(239,68,68,0.1)",    icon: <Clock size={18} /> },
-          { label: "Active Cases",        value: loading ? "—" : String(activeCount),    color: "#7c3aed",        bg: "rgba(124,58,237,0.1)",   icon: <FileText size={18} /> },
-          { label: "Delivered Today",     value: loading ? "—" : String(deliveredToday), color: "var(--warning)", bg: "rgba(245,158,11,0.1)",   icon: <Package size={18} /> },
-          { label: "Completed",           value: loading ? "—" : String(completedCount), color: "var(--success)", bg: "rgba(5,150,105,0.1)",    icon: <CheckCircle2 size={18} /> },
+          { label: "Awaiting Acceptance", value: loading ? "N/A" : String(awaitingCount),  color: "var(--danger)",  bg: "rgba(239,68,68,0.1)",    icon: <Clock size={18} /> },
+          { label: "Active Cases",        value: loading ? "N/A" : String(activeCount),    color: "#7c3aed",        bg: "rgba(124,58,237,0.1)",   icon: <FileText size={18} /> },
+          { label: "Delivered Today",     value: loading ? "N/A" : String(deliveredToday), color: "var(--warning)", bg: "rgba(245,158,11,0.1)",   icon: <Package size={18} /> },
+          { label: "Completed",           value: loading ? "N/A" : String(completedCount), color: "var(--success)", bg: "rgba(5,150,105,0.1)",    icon: <CheckCircle2 size={18} /> },
         ].map(k => (
           <div key={k.label} style={{ backgroundColor: "var(--card-bg)", borderRadius: "12px", border: "1px solid var(--border)", padding: "16px 18px", display: "flex", alignItems: "center", gap: "14px" }}>
             <div style={{ width: "38px", height: "38px", borderRadius: "9px", backgroundColor: k.bg, color: k.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -191,10 +191,10 @@ export const NgoDashboard: React.FC = () => {
         <Card title="My Organisation Summary">
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {[
-              { label: "Total Assigned to Us", value: loading ? "—" : String(allRequests.length),    color: "var(--primary)" },
-              { label: "Awaiting Acceptance",      value: loading ? "—" : String(awaitingCount),         color: "var(--danger)"  },
-              { label: "Active Cases",             value: loading ? "—" : String(activeCount),           color: "#7c3aed"        },
-              { label: "Completed",                value: loading ? "—" : String(completedCount),        color: "var(--success)" },
+              { label: "Total Assigned to Us", value: loading ? "N/A" : String(allRequests.length),    color: "var(--primary)" },
+              { label: "Awaiting Acceptance",      value: loading ? "N/A" : String(awaitingCount),         color: "var(--danger)"  },
+              { label: "Active Cases",             value: loading ? "N/A" : String(activeCount),           color: "#7c3aed"        },
+              { label: "Completed",                value: loading ? "N/A" : String(completedCount),        color: "var(--success)" },
             ].map(row => (
               <div key={row.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderRadius: "8px", backgroundColor: "var(--bg)", border: "1px solid var(--border)" }}>
                 <span style={{ fontSize: "13px", color: "var(--text-h)", fontWeight: 500 }}>{row.label}</span>

@@ -221,7 +221,7 @@ export const LocationSelector: React.FC<Props> = ({ value, onChange, errors = {}
 
       {/* GPS Coordinates */}
       <div>
-        <label style={labelStyle}>GPS Coordinates (Optional — improves routing)</label>
+        <label style={labelStyle}>GPS Coordinates (Optional - improves routing)</label>
         <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
           <div style={{ flex: 1 }}>
             <input

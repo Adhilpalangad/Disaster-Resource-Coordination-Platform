@@ -19,6 +19,7 @@ import {
   PlusCircle,
   ClipboardList,
 } from "lucide-react";
+import Logo from "../components/Logo.js";
 import { useAuth } from "../context/AuthContext.js";
 import type { UserRole } from "../types/index.js";
 
@@ -127,64 +128,45 @@ export const Sidebar: React.FC<SidebarProps> = ({
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "10px",
-            fontSize: "15px",
-            fontWeight: 700,
-            color: "var(--text-h, #0F172A)",
             textDecoration: "none",
           }}
         >
-          <div
-            style={{
-              width: "32px",
-              height: "32px",
-              borderRadius: "8px",
-              backgroundColor: "var(--primary, #0284C7)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#FFFFFF",
-              flexShrink: 0,
-            }}
-          >
-            <Shield size={18} />
-          </div>
-          <span>Disaster Platform</span>
+          <Logo height={28} showText={true} />
         </Link>
       </div>
 
       {/* Role badge */}
       <div
         style={{
-          padding: "10px 20px",
-          borderBottom: "1px solid var(--border, #E2E8F0)",
-          backgroundColor: "var(--bg, #F8FAFC)",
+          padding: "12px 20px",
+          borderBottom: "1px solid var(--border)",
+          backgroundColor: "var(--bg)",
         }}
       >
-        <div style={{ fontSize: "11px", fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
+        <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
           Signed in as
         </div>
-        <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-h)" }}>
+        <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-h)" }}>
           {user?.name ?? "Guest"}
         </div>
         <div
           style={{
             display: "inline-block",
-            marginTop: "4px",
-            padding: "2px 8px",
+            marginTop: "6px",
+            padding: "3px 10px",
             borderRadius: "20px",
             fontSize: "11px",
-            fontWeight: 600,
+            fontWeight: 700,
             backgroundColor:
-              role === "admin" ? "rgba(220,38,38,0.1)" :
-              role === "ngo" ? "rgba(124,58,237,0.1)" :
-              role === "volunteer" ? "rgba(5,150,105,0.1)" :
-              "rgba(2,132,199,0.1)",
+              role === "admin" ? "var(--danger-bg)" :
+              role === "ngo" ? "rgba(139, 92, 246, 0.15)" :
+              role === "volunteer" ? "var(--success-bg)" :
+              "var(--primary-light)",
             color:
-              role === "admin" ? "#DC2626" :
-              role === "ngo" ? "#7C3AED" :
-              role === "volunteer" ? "#059669" :
-              "#0284C7",
+              role === "admin" ? "var(--danger)" :
+              role === "ngo" ? "#8b5cf6" :
+              role === "volunteer" ? "var(--success)" :
+              "var(--primary)",
           }}
         >
           {ROLE_LABEL[role]}
@@ -197,7 +179,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           style={{
             fontSize: "11px",
             fontWeight: 700,
-            color: "#94A3B8",
+            color: "var(--text-muted)",
             letterSpacing: "0.5px",
             padding: "0 12px 8px",
             textTransform: "uppercase",
@@ -205,7 +187,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         >
           Navigation
         </div>
-        <nav style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+        <nav style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
           {navItems.map((item) => {
             const isActive =
               item.path === "/"
@@ -223,16 +205,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   alignItems: "center",
                   gap: "12px",
                   padding: "10px 12px",
-                  borderRadius: "8px",
+                  borderRadius: "10px",
                   fontSize: "14px",
                   fontWeight: isActive ? 600 : 500,
-                  color: isActive ? "var(--primary, #0284C7)" : "var(--secondary, #475569)",
-                  backgroundColor: isActive ? "rgba(2, 132, 199, 0.08)" : "transparent",
+                  color: isActive ? "var(--primary)" : "var(--secondary)",
+                  backgroundColor: isActive ? "var(--primary-light)" : "transparent",
                   textDecoration: "none",
                   transition: "all 0.15s ease",
                 }}
               >
-                <span style={{ color: isActive ? "var(--primary, #0284C7)" : "#64748B", flexShrink: 0 }}>
+                <span style={{ color: isActive ? "var(--primary)" : "var(--secondary)", flexShrink: 0 }}>
                   {item.icon}
                 </span>
                 {item.label}

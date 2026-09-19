@@ -7,14 +7,12 @@ export const connectDB = async () => {
     try {
         const connString = process.env.MONGODB_URI;
         if (!connString) {
-            console.error("❌ Error: MONGODB_URI is not defined in environment variables. Starting in Fallback mode.");
-            healthService.transitionTo("MONGODB_UNAVAILABLE", "MONGODB_URI not defined");
+            console.error("❌ Error: MONGODB_URI is not defined in environment variables");
             return;
         }
 
-        const conn = await mongoose.connect(connString, {
-          serverSelectionTimeoutMS: 5000,
-        });
+        mongoose.set('bufferCommands', false);
+        const conn = await mongoose.connect(connString, { serverSelectionTimeoutMS: 2000 });
         console.log(`📡 MongoDB Connected: ${conn.connection.host}`);
         healthService.transitionTo("HEALTHY", "Connected successfully");
     } catch (error) {

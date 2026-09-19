@@ -6,10 +6,13 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
+      '@': path.resolve(__dirname, './src'),
       '@disaster-platform/shared': path.resolve(__dirname, '../shared/src/index.ts'),
     },
   },
   server: {
+    port: 8080,
+    host: true,
     proxy: {
       '/api': {
         target: 'http://localhost:5000',
