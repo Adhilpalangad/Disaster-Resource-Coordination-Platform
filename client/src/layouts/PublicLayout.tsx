@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Outlet, NavLink, Link, useNavigate } from "react-router-dom";
-import { Shield, Menu, X, LayoutDashboard } from "lucide-react";
+import { Menu, X, LayoutDashboard } from "lucide-react";
 import Footer from "./Footer.js";
 import ThemeToggle from "../components/ThemeToggle.js";
 import ProfileDropdown from "../components/ProfileDropdown.js";
+import Logo from "../components/Logo.js";
 import { useAuth } from "../context/AuthContext.js";
 
 const NAV_LINKS = [
@@ -35,137 +36,117 @@ export const PublicLayout: React.FC = () => {
   });
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", backgroundColor: "var(--bg)" }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
 
-      {/* ── Sticky Header ───────────────────────────────────────────────── */}
-      <header
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-          height: "64px",
-          backgroundColor: "var(--card-bg)",
-          borderBottom: "1px solid var(--border)",
-          padding: "0 24px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          transition: "box-shadow 0.2s ease",
-          boxShadow: scrolled ? "0 2px 12px rgba(0,0,0,0.06)" : "none",
-        }}
-      >
-        {/* Brand */}
-        <Link
-          to="/home"
+      {/* ── 21st.app Floating Pill Header ───────────────────────────────── */}
+      <div style={{ position: "sticky", top: "16px", zIndex: 50, padding: "0 16px" }}>
+        <header
           style={{
+            maxWidth: "880px",
+            margin: "0 auto",
+            height: "56px",
+            backgroundColor: "var(--card-bg)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            border: "1px solid var(--border)",
+            borderRadius: "99px",
+            padding: "0 20px",
             display: "flex",
             alignItems: "center",
-            gap: "10px",
-            textDecoration: "none",
-            flexShrink: 0,
+            justifyContent: "space-between",
+            boxShadow: scrolled ? "0 14px 40px rgba(0,0,0,0.22)" : "0 10px 30px rgba(0,0,0,0.12)",
+            transition: "all 0.25s ease",
           }}
         >
-          <div style={{
-            width: "32px",
-            height: "32px",
-            borderRadius: "8px",
-            backgroundColor: "var(--primary)",
-            color: "#fff",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}>
-            <Shield size={17} />
+          {/* Brand */}
+          <Logo to="/home" height={30} showText={true} />
+
+          {/* Desktop Nav */}
+          <nav style={{ display: "flex", alignItems: "center", gap: "24px" }} className="public-nav-desktop">
+            {NAV_LINKS.map((l) => (
+              <NavLink key={l.to} to={l.to} style={navLinkStyle}>{l.label}</NavLink>
+            ))}
+          </nav>
+
+          {/* Desktop Actions */}
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }} className="public-nav-desktop">
+            <ThemeToggle />
+            {isAuthenticated ? (
+              <>
+                <Link
+                  to={getDashboardPath()}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    fontFamily: "var(--heading)",
+                    color: "var(--text-h)",
+                    textDecoration: "none",
+                    padding: "8px 18px",
+                    borderRadius: "99px",
+                    border: "none",
+                    backgroundColor: "var(--bg)",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <LayoutDashboard size={14} /> Dashboard
+                </Link>
+                <ProfileDropdown />
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    fontFamily: "var(--heading)",
+                    color: "var(--text-h)",
+                    textDecoration: "none",
+                    padding: "8px 18px",
+                    borderRadius: "99px",
+                    border: "none",
+                    backgroundColor: "var(--bg)",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/register"
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    fontFamily: "var(--heading)",
+                    color: "#ffffff",
+                    backgroundColor: "var(--primary)",
+                    textDecoration: "none",
+                    padding: "8px 20px",
+                    borderRadius: "99px",
+                    border: "none",
+                    boxShadow: "none",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  Sign Up
+                </Link>
+              </>
+            )}
           </div>
-          <span style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-h)" }}>
-            DisasterPlatform
-          </span>
-        </Link>
 
-        {/* Desktop Nav */}
-        <nav style={{ display: "flex", alignItems: "center", gap: "28px" }} className="public-nav-desktop">
-          {NAV_LINKS.map((l) => (
-            <NavLink key={l.to} to={l.to} style={navLinkStyle}>{l.label}</NavLink>
-          ))}
-        </nav>
-
-        {/* Desktop Actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }} className="public-nav-desktop">
-          <ThemeToggle />
-          {isAuthenticated ? (
-            <>
-              <Link
-                to={getDashboardPath()}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  color: "var(--text-h)",
-                  textDecoration: "none",
-                  padding: "7px 16px",
-                  borderRadius: "9px",
-                  border: "1px solid var(--border)",
-                  transition: "border-color 0.15s, background-color 0.15s",
-                }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--primary)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--border)"; }}
-              >
-                <LayoutDashboard size={15} /> Dashboard
-              </Link>
-              <ProfileDropdown />
-            </>
-          ) : (
-            <>
-              <Link
-                to="/login"
-                style={{
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  color: "var(--text-h)",
-                  textDecoration: "none",
-                  padding: "7px 16px",
-                  borderRadius: "9px",
-                  border: "1px solid var(--border)",
-                  transition: "border-color 0.15s, background-color 0.15s",
-                }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--primary)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--border)"; }}
-              >
-                Sign In
-              </Link>
-              <Link
-                to="/register"
-                style={{
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  color: "#fff",
-                  backgroundColor: "var(--primary)",
-                  textDecoration: "none",
-                  padding: "7px 16px",
-                  borderRadius: "9px",
-                  transition: "background-color 0.15s",
-                }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "var(--primary-hover)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "var(--primary)"; }}
-              >
-                Get Started
-              </Link>
-            </>
-          )}
-        </div>
-
-        {/* Mobile hamburger */}
-        <button
-          onClick={() => setMobileOpen(!mobileOpen)}
-          style={{ background: "none", border: "none", color: "var(--secondary)", cursor: "pointer", padding: "4px", display: "none" }}
-          className="public-nav-mobile-btn"
-          aria-label="Toggle menu"
-        >
-          {mobileOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
-      </header>
+          {/* Mobile hamburger */}
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            style={{ background: "none", border: "none", color: "var(--secondary)", cursor: "pointer", padding: "4px", display: "none" }}
+            className="public-nav-mobile-btn"
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </header>
+      </div>
 
       {/* Mobile Nav Dropdown */}
       {mobileOpen && (

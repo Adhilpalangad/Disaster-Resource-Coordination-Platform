@@ -91,7 +91,7 @@ export const PrivacyPolicy: React.FC = () => {
           <p style={pStyle}>We collect the following categories of information:</p>
           <ul style={{ paddingLeft: "20px", margin: 0 }}>
             <li style={liStyle}><strong>Account Information:</strong> Name, email address, phone number, and password hash.</li>
-            <li style={liStyle}><strong>Role-Specific Data:</strong> For NGOs — organization name, district. For Volunteers — profession and district.</li>
+            <li style={liStyle}><strong>Role-Specific Data:</strong> For NGOs - organization name, district. For Volunteers - profession and district.</li>
             <li style={liStyle}><strong>Relief Requests:</strong> Type of assistance requested, location, description, and any uploaded images.</li>
             <li style={liStyle}><strong>Usage Data:</strong> IP address, browser type, pages visited, and session timestamps for security and analytics purposes.</li>
             <li style={liStyle}><strong>Communications:</strong> Messages you submit through contact forms or support.</li>
@@ -118,7 +118,7 @@ export const PrivacyPolicy: React.FC = () => {
             We take security seriously. We implement industry-standard measures including:
           </p>
           <ul style={{ paddingLeft: "20px", margin: 0 }}>
-            <li style={liStyle}>All passwords are hashed using bcrypt — we never store plain-text passwords.</li>
+            <li style={liStyle}>All passwords are hashed using bcrypt - we never store plain-text passwords.</li>
             <li style={liStyle}>Data is transmitted over TLS/HTTPS encryption.</li>
             <li style={liStyle}>We use row-level security and access controls in our database.</li>
             <li style={liStyle}>Rate limiting and brute-force protection on all authentication endpoints.</li>

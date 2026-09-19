@@ -13,12 +13,9 @@ const PORT = process.env.PORT || 5000;
 connectDB().then(async () => {
   // Seed demo data on first run
   try {
-    const { seedDisasters }  = await import("./features/disasters/disaster.controller.js");
-    const { seedDemoNGO }    = await import("./features/ngos/ngo.model.js");
-
-    // seedDisasters expects req/res — call internal seeding logic directly
     const { Disaster } = await import("./features/disasters/disaster.model.js");
-    const existing = await Disaster.countDocuments();
+    const { seedDemoNGO } = await import("./features/ngos/ngo.model.js");
+    const existing = await Disaster.countDocuments().catch(() => -1);
     if (existing === 0) {
       await Disaster.create([
         {
@@ -41,12 +38,13 @@ connectDB().then(async () => {
       ]);
       console.log("✅ Demo disaster data seeded");
     }
-
-    await seedDemoNGO();
+    if (existing >= 0) {
+      await seedDemoNGO();
+    }
   } catch (e) {
-    console.warn("⚠️  Seed step failed (non-fatal):", e instanceof Error ? e.message : e);
+    console.warn("⚠️  Seed step skipped:", e instanceof Error ? e.message : e);
   }
-
+}).finally(() => {
   app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
   });

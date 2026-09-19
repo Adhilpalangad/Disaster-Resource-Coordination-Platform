@@ -51,7 +51,7 @@ export const Dashboard: React.FC = () => {
   const kpis = [
     {
       label: "Total Requests",
-      value: loading ? "—" : String(requests.length),
+      value: loading ? "N/A" : String(requests.length),
       icon: <FileText size={18} />,
       iconBg: "rgba(2,132,199,0.1)",
       iconColor: "var(--primary)",
@@ -59,7 +59,7 @@ export const Dashboard: React.FC = () => {
     },
     {
       label: "Active",
-      value: loading ? "—" : String(active),
+      value: loading ? "N/A" : String(active),
       icon: <Clock size={18} />,
       iconBg: "rgba(124,58,237,0.1)",
       iconColor: "#7c3aed",
@@ -67,7 +67,7 @@ export const Dashboard: React.FC = () => {
     },
     {
       label: "Resolved",
-      value: loading ? "—" : String(resolved),
+      value: loading ? "N/A" : String(resolved),
       icon: <Home size={18} />,
       iconBg: "rgba(5,150,105,0.1)",
       iconColor: "var(--success)",
@@ -75,7 +75,7 @@ export const Dashboard: React.FC = () => {
     },
     {
       label: "Volunteers Deployed",
-      value: "—",
+      value: "0",
       icon: <Users size={18} />,
       iconBg: "rgba(245,158,11,0.1)",
       iconColor: "var(--warning)",
@@ -93,7 +93,7 @@ export const Dashboard: React.FC = () => {
       }}>
         <AlertTriangle size={15} style={{ color: "var(--danger)", flexShrink: 0 }} />
         <p style={{ margin: 0, fontSize: "13px", color: "var(--text-h)", fontWeight: 500 }}>
-          <strong>Active:</strong> Wayanad Flood Relief Operation — Relief activities ongoing in Mananthavady, Vythiri, and Kalpetta.
+          <strong>Active:</strong> Wayanad Flood Relief Operation: Relief activities ongoing in Mananthavady, Vythiri, and Kalpetta.
         </p>
         <Link to="/disasters" style={{ marginLeft: "auto", fontSize: "12px", fontWeight: 600, color: "var(--danger)", textDecoration: "none", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "4px" }}>
           View <ArrowRight size={12} />

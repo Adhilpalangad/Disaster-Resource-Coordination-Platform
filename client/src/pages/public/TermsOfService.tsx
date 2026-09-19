@@ -157,7 +157,7 @@ export const TermsOfService: React.FC = () => {
           <p style={pStyle}>
             To the fullest extent permitted by applicable law, we shall not be liable for any indirect,
             incidental, special, consequential, or punitive damages arising from your use of, or inability
-            to use, the platform or its services — including damages resulting from reliance on any
+            to use, the platform or its services - including damages resulting from reliance on any
             information provided by other users of the platform.
           </p>
         </div>

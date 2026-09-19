@@ -221,7 +221,7 @@ export const MyRequests: React.FC = () => {
 
                   <div style={{ display: "flex", gap: "14px", fontSize: "12px", color: "var(--secondary)", flexWrap: "wrap" }}>
                     <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                      <MapPin size={12} /> {req.location?.localBodyName ?? "—"}, {req.location?.districtName ?? ""}
+                      <MapPin size={12} /> {req.location?.localBodyName ?? "N/A"}, {req.location?.districtName ?? ""}
                     </span>
                     <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                       <Users size={12} /> {req.peopleAffected} {req.peopleAffected === 1 ? "person" : "people"}
