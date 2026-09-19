@@ -3,6 +3,7 @@ import { Disaster } from "./disaster.model.js";
 import { VolunteerDisasterResponse } from "./volunteer-response.model.js";
 import { User } from "../auth/user.model.js";
 import { notificationService } from "../notifications/notification.service.js";
+import { databaseService } from "../resilience/database.service.js";
 import { AppError } from "../../utils/AppError.js";
 import { getPagination, buildPaginationMeta } from "../../utils/pagination.js";
 import { buildSearchFilter } from "../../utils/search.js";
@@ -20,14 +21,14 @@ export const getAllDisasters = async (req: Request, res: Response, next: NextFun
     const pagination = getPagination(req.query);
 
     if (!pagination.applied) {
-      const data = await Disaster.find(filter).sort({ startedAt: -1 });
+      const data = await databaseService.find(Disaster, filter, { sort: { startedAt: -1 } });
       res.json({ success: true, data, ...buildPaginationMeta(data.length, pagination) });
       return;
     }
 
     const [data, total] = await Promise.all([
-      Disaster.find(filter).sort({ startedAt: -1 }).skip(pagination.skip).limit(pagination.limit),
-      Disaster.countDocuments(filter),
+      databaseService.find(Disaster, filter, { sort: { startedAt: -1 }, skip: pagination.skip, limit: pagination.limit }),
+      databaseService.countDocuments(Disaster, filter),
     ]);
     res.json({ success: true, data, ...buildPaginationMeta(total, pagination) });
   } catch (err) {
@@ -42,14 +43,14 @@ export const getActiveDisasters = async (req: Request, res: Response, next: Next
     const pagination = getPagination(req.query);
 
     if (!pagination.applied) {
-      const data = await Disaster.find(filter).sort({ startedAt: -1 });
+      const data = await databaseService.find(Disaster, filter, { sort: { startedAt: -1 } });
       res.json({ success: true, data, ...buildPaginationMeta(data.length, pagination) });
       return;
     }
 
     const [data, total] = await Promise.all([
-      Disaster.find(filter).sort({ startedAt: -1 }).skip(pagination.skip).limit(pagination.limit),
-      Disaster.countDocuments(filter),
+      databaseService.find(Disaster, filter, { sort: { startedAt: -1 }, skip: pagination.skip, limit: pagination.limit }),
+      databaseService.countDocuments(Disaster, filter),
     ]);
     res.json({ success: true, data, ...buildPaginationMeta(total, pagination) });
   } catch (err) {
@@ -59,7 +60,8 @@ export const getActiveDisasters = async (req: Request, res: Response, next: Next
 
 export const getDisasterById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const doc = await Disaster.findById(req.params["id"]);
+    const id = String(req.params["id"] || "");
+    const doc = await databaseService.findById(Disaster, id);
     if (!doc) throw AppError.notFound("Disaster not found");
     res.json({ success: true, data: doc });
   } catch (err) {
@@ -71,10 +73,9 @@ export const getDisasterById = async (req: Request, res: Response, next: NextFun
 
 export const createDisaster = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    // req.body was already validated/coerced by validateBody(createDisasterSchema) in disaster.routes.ts
     const parsed = req.body as CreateDisasterInput;
 
-    const doc = await Disaster.create({
+    const doc = await databaseService.create(Disaster, {
       title:                  parsed.title,
       type:                   parsed.type,
       severity:                parsed.severity ?? "high",
@@ -93,9 +94,7 @@ export const createDisaster = async (req: Request, res: Response, next: NextFunc
         const names: string[] = parsed.affectedDistrictNames ?? [];
         if (names.length === 0) return;
 
-        const volunteers = await User.find({ role: "volunteer", district: { $in: names } })
-          .select("_id name email district")
-          .lean();
+        const volunteers = await databaseService.find(User, { role: "volunteer", district: { $in: names } }, { select: "_id name email district", lean: true });
 
         if (volunteers.length === 0) {
           console.log("[Disaster] No volunteers found in affected districts — skip notify");
@@ -103,8 +102,8 @@ export const createDisaster = async (req: Request, res: Response, next: NextFunc
         }
 
         await notificationService.sendMany(
-          volunteers.map(v => ({
-            userId:    (v._id as { toString(): string }).toString(),
+          volunteers.map((v: any) => ({
+            userId:    String(v._id),
             userEmail: v.email,
             title:     `🚨 Disaster Alert: ${doc.title}`,
             message:   `A ${doc.type} has been declared in ${names.join(", ")}. ` +
@@ -130,8 +129,8 @@ export const createDisaster = async (req: Request, res: Response, next: NextFunc
 
 export const updateDisaster = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    // req.body was already validated/coerced by validateBody(updateDisasterSchema) in disaster.routes.ts
     const parsed = req.body as UpdateDisasterInput;
+    const id = String(req.params["id"] || "");
 
     const update: Record<string, unknown> = {};
     if (parsed.title !== undefined)                 update.title                  = parsed.title;
@@ -143,7 +142,7 @@ export const updateDisaster = async (req: Request, res: Response, next: NextFunc
     if (parsed.startedAt !== undefined)             update.startedAt              = new Date(parsed.startedAt);
     if (parsed.description !== undefined)           update.description            = parsed.description;
 
-    const doc = await Disaster.findByIdAndUpdate(req.params["id"], update, { new: true, runValidators: true });
+    const doc = await databaseService.findByIdAndUpdate(Disaster, id, update, { new: true, runValidators: true });
     if (!doc) throw AppError.notFound("Disaster not found");
     res.json({ success: true, data: doc });
   } catch (err) {
@@ -155,7 +154,8 @@ export const updateDisaster = async (req: Request, res: Response, next: NextFunc
 
 export const deleteDisaster = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const doc = await Disaster.findByIdAndDelete(req.params["id"]);
+    const id = String(req.params["id"] || "");
+    const doc = await databaseService.findByIdAndDelete(Disaster, id);
     if (!doc) throw AppError.notFound("Disaster not found");
     res.json({ success: true, message: "Disaster deleted" });
   } catch (err) {
@@ -172,18 +172,19 @@ export const respondToDisaster = async (req: Request, res: Response, next: NextF
   try {
     if (!req.user) throw AppError.unauthorized("Unauthorized");
 
-    // req.body was already validated by validateBody(volunteerResponseSchema) in disaster.routes.ts
     const { status } = req.body as { status: "available" | "unavailable" };
+    const disasterId = String(req.params["id"] || "");
 
-    const disaster = await Disaster.findById(req.params["id"]);
+    const disaster = await databaseService.findById(Disaster, disasterId);
     if (!disaster) throw AppError.notFound("Disaster not found");
 
-    const volunteerId = (req.user._id as { toString(): string }).toString();
+    const volunteerId = String(req.user._id);
 
-    const response = await VolunteerDisasterResponse.findOneAndUpdate(
-      { disasterId: req.params["id"], volunteerId },
+    const response = await databaseService.findOneAndUpdate(
+      VolunteerDisasterResponse,
+      { disasterId, volunteerId },
       {
-        disasterId:     req.params["id"],
+        disasterId,
         volunteerId,
         volunteerName:  req.user.name,
         volunteerEmail: req.user.email,
@@ -204,14 +205,18 @@ export const respondToDisaster = async (req: Request, res: Response, next: NextF
  *  Returns all volunteer opt-in responses for a given disaster. */
 export const getVolunteerResponses = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const responses = await VolunteerDisasterResponse.find({ disasterId: req.params["id"] })
-      .sort({ respondedAt: -1 })
-      .lean();
+    const disasterId = req.params["id"] || "";
+    const responses = await databaseService.find(
+      VolunteerDisasterResponse,
+      { disasterId },
+      { sort: { respondedAt: -1 }, lean: true }
+    );
     res.json({ success: true, data: responses });
   } catch (err) {
     next(err);
   }
 };
+
 
 // ── Seed ──────────────────────────────────────────────────────────────────────
 

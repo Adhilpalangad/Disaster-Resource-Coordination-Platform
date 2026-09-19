@@ -1,22 +1,25 @@
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
-import app from "./app.js";
-import { connectDB } from "./config/db.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // .env lives at the project root, two levels above server/src/
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
+import app from "./app.js";
+import { connectDB } from "./config/db.js";
+import { initializeFirebase } from "./config/firebase.config.js";
+import { syncManager } from "./features/resilience/sync.manager.js";
+
 const PORT = process.env.PORT || 5000;
+
+initializeFirebase();
 
 connectDB().then(async () => {
   // Seed demo data on first run
   try {
-    const { seedDisasters }  = await import("./features/disasters/disaster.controller.js");
     const { seedDemoNGO }    = await import("./features/ngos/ngo.model.js");
 
-    // seedDisasters expects req/res — call internal seeding logic directly
     const { Disaster } = await import("./features/disasters/disaster.model.js");
     const existing = await Disaster.countDocuments();
     if (existing === 0) {
@@ -43,6 +46,9 @@ connectDB().then(async () => {
     }
 
     await seedDemoNGO();
+
+    // Trigger sync worker to drain any outbox operations from previous downtime
+    syncManager.triggerSync().catch((e) => console.warn("⚠️ Initial sync replay warning:", e));
   } catch (e) {
     console.warn("⚠️  Seed step failed (non-fatal):", e instanceof Error ? e.message : e);
   }
@@ -51,4 +57,5 @@ connectDB().then(async () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
   });
 });
+
 

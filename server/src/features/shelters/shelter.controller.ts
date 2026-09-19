@@ -1,15 +1,14 @@
 import type { Request, Response } from "express";
 import { Shelter } from "./shelter.model.js";
+import { databaseService } from "../resilience/database.service.js";
 
 // Helper to seed initial 3 shelters if collection is empty
 const seedInitialSheltersIfEmpty = async () => {
-  const count = await Shelter.countDocuments();
+  const count = await databaseService.countDocuments(Shelter);
   if (count === 0) {
-    await Shelter.insertMany([
-      { name: "St. Mary's School Relief Shelter", location: "Wayanad Sector 1", capacity: 300, occupancy: 240, status: "in_progress", manager: "Sr. Teresa" },
-      { name: "Community Hall Camp B", location: "Calicut Road", capacity: 150, occupancy: 145, status: "pending", manager: "M. Nair" },
-      { name: "Central Indoor Stadium Shelter", location: "Town Center", capacity: 500, occupancy: 120, status: "verified", manager: "R. Pillai" },
-    ]);
+    await databaseService.create(Shelter, { name: "St. Mary's School Relief Shelter", location: "Wayanad Sector 1", capacity: 300, occupancy: 240, status: "in_progress", manager: "Sr. Teresa" });
+    await databaseService.create(Shelter, { name: "Community Hall Camp B", location: "Calicut Road", capacity: 150, occupancy: 145, status: "pending", manager: "M. Nair" });
+    await databaseService.create(Shelter, { name: "Central Indoor Stadium Shelter", location: "Town Center", capacity: 500, occupancy: 120, status: "verified", manager: "R. Pillai" });
   }
 };
 
@@ -30,7 +29,7 @@ export const getShelters = async (req: Request, res: Response): Promise<void> =>
       ];
     }
 
-    const shelters = await Shelter.find(query).sort({ createdAt: -1 });
+    const shelters = await databaseService.find(Shelter, query, { sort: { createdAt: -1 } });
 
     res.status(200).json({
       success: true,
@@ -49,8 +48,8 @@ export const getShelters = async (req: Request, res: Response): Promise<void> =>
 /** GET /api/shelters/:id */
 export const getShelterById = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
-    const shelter = await Shelter.findById(id);
+    const id = String(req.params.id);
+    const shelter = await databaseService.findById(Shelter, id);
 
     if (!shelter) {
       res.status(404).json({ success: false, message: "Shelter not found" });
@@ -80,7 +79,7 @@ export const createShelter = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const shelter = await Shelter.create({
+    const shelter = await databaseService.create(Shelter, {
       name: name.trim(),
       location: location.trim(),
       capacity: Number(capacity) || 100,
@@ -108,10 +107,11 @@ export const createShelter = async (req: Request, res: Response): Promise<void> 
 /** PUT/PATCH /api/shelters/:id */
 export const updateShelter = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     const { name, location, capacity, occupancy, status, manager, phone, notes } = req.body;
 
-    const updated = await Shelter.findByIdAndUpdate(
+    const updated = await databaseService.findByIdAndUpdate(
+      Shelter,
       id,
       {
         ...(name && { name: name.trim() }),
@@ -148,8 +148,8 @@ export const updateShelter = async (req: Request, res: Response): Promise<void> 
 /** DELETE /api/shelters/:id */
 export const deleteShelter = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
-    const deleted = await Shelter.findByIdAndDelete(id);
+    const id = String(req.params.id);
+    const deleted = await databaseService.findByIdAndDelete(Shelter, id);
 
     if (!deleted) {
       res.status(404).json({ success: false, message: "Shelter not found" });
@@ -165,3 +165,4 @@ export const deleteShelter = async (req: Request, res: Response): Promise<void> 
     });
   }
 };
+

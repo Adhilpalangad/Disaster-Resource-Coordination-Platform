@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { User } from '../features/auth/user.model.js';
 import type { IUser } from '../features/auth/user.model.js';
+import { databaseService } from '../features/resilience/database.service.js';
 
 // Extend Express Request object
 declare global {
@@ -58,7 +59,7 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
 
     req.supabaseId = data.user.id;
 
-    const user = await User.findOne({ supabaseId: data.user.id });
+    const user = await databaseService.findOne(User, { supabaseId: data.user.id });
     if (user) {
       req.user = user;
     }

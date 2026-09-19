@@ -1,17 +1,27 @@
 import mongoose from "mongoose";
+import { healthService } from "../features/resilience/health.service.js";
 
 export const connectDB = async () => {
+    healthService.init();
+
     try {
         const connString = process.env.MONGODB_URI;
         if (!connString) {
-            console.error("❌ Error: MONGODB_URI is not defined in environment variables");
-            process.exit(1);
+            console.error("❌ Error: MONGODB_URI is not defined in environment variables. Starting in Fallback mode.");
+            healthService.transitionTo("MONGODB_UNAVAILABLE", "MONGODB_URI not defined");
+            return;
         }
 
-        const conn = await mongoose.connect(connString);
+        const conn = await mongoose.connect(connString, {
+          serverSelectionTimeoutMS: 5000,
+        });
         console.log(`📡 MongoDB Connected: ${conn.connection.host}`);
+        healthService.transitionTo("HEALTHY", "Connected successfully");
     } catch (error) {
-        console.error(`❌ MongoDB connection error: ${error instanceof Error ? error.message : error}`);
-        process.exit(1);
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error(`❌ MongoDB connection error: ${msg}`);
+        healthService.transitionTo("MONGODB_UNAVAILABLE", msg);
+        console.warn("⚠️ Server proceeding in Fallback/Offline Mode using Firebase resilience layer.");
     }
 };
+
